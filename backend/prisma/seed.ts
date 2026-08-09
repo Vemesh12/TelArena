@@ -49,6 +49,12 @@ async function main() {
     },
   });
 
+  if (process.env.SEED_PRODUCTION === 'true') {
+    console.log('🚀 Production Seeding Complete: Verification Config & Master Admin account seeded.');
+    console.log('----------------------------------------------------');
+    return;
+  }
+
   const admin = await prisma.player.upsert({
     where: { discordId: 'dev_admin_1001' },
     update: { phone: '9999900001', password: hashedAdminPass, role: 'admin' },
