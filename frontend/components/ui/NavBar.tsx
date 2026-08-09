@@ -391,34 +391,36 @@ export function NavBar() {
                 Log In
               </Button>
 
-              {/* Seeded Credentials Reference Guide */}
-              <div className="mt-6 pt-4 border-t border-line space-y-2">
-                <span className="font-body font-medium text-[11px] text-text-secondary uppercase tracking-wide block">
-                  Test credentials (click to autofill)
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-mono">
-                  <button type="button" onClick={() => autofillCredentials("9999900000", "admin123")} className="p-2.5 rounded-lg bg-bg-elevated hover:bg-white/[0.06] border border-line text-left transition-colors">
-                    <span className="text-rank-gold font-semibold block">Super Admin</span>
-                    <span className="text-text-muted">9999900000 / admin123</span>
-                  </button>
-                  <button type="button" onClick={() => autofillCredentials("9999900001", "admin123")} className="p-2.5 rounded-lg bg-bg-elevated hover:bg-white/[0.06] border border-line text-left transition-colors">
-                    <span className="text-accent-red font-semibold block">System Admin</span>
-                    <span className="text-text-muted">9999900001 / admin123</span>
-                  </button>
-                  <button type="button" onClick={() => autofillCredentials("9876543210", "captain123")} className="p-2.5 rounded-lg bg-bg-elevated hover:bg-white/[0.06] border border-line text-left transition-colors">
-                    <span className="text-accent-cyan font-semibold block">Squad Captain</span>
-                    <span className="text-text-muted">9876543210 / captain123</span>
-                  </button>
-                  <button type="button" onClick={() => autofillCredentials("9999900002", "mod123")} className="p-2.5 rounded-lg bg-bg-elevated hover:bg-white/[0.06] border border-line text-left transition-colors">
-                    <span className="text-text-primary font-semibold block">Moderator</span>
-                    <span className="text-text-muted">9999900002 / mod123</span>
-                  </button>
-                  <button type="button" onClick={() => autofillCredentials("9555544444", "player123")} className="p-2.5 rounded-lg bg-bg-elevated hover:bg-white/[0.06] border border-line text-left transition-colors sm:col-span-2">
-                    <span className="text-text-primary font-semibold block">Standard Player</span>
-                    <span className="text-text-muted">9555544444 / player123</span>
-                  </button>
+              {/* Seeded Credentials Reference Guide (Development Only) */}
+              {process.env.NODE_ENV === "development" && (
+                <div className="mt-6 pt-4 border-t border-line space-y-2">
+                  <span className="font-body font-medium text-[11px] text-text-secondary uppercase tracking-wide block">
+                    Test credentials (click to autofill)
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-mono">
+                    <button type="button" onClick={() => autofillCredentials("9999900000", "admin123")} className="p-2.5 rounded-lg bg-bg-elevated hover:bg-white/[0.06] border border-line text-left transition-colors">
+                      <span className="text-rank-gold font-semibold block">Super Admin</span>
+                      <span className="text-text-muted">9999900000 / admin123</span>
+                    </button>
+                    <button type="button" onClick={() => autofillCredentials("9999900001", "admin123")} className="p-2.5 rounded-lg bg-bg-elevated hover:bg-white/[0.06] border border-line text-left transition-colors">
+                      <span className="text-accent-red font-semibold block">System Admin</span>
+                      <span className="text-text-muted">9999900001 / admin123</span>
+                    </button>
+                    <button type="button" onClick={() => autofillCredentials("9876543210", "captain123")} className="p-2.5 rounded-lg bg-bg-elevated hover:bg-white/[0.06] border border-line text-left transition-colors">
+                      <span className="text-accent-cyan font-semibold block">Squad Captain</span>
+                      <span className="text-text-muted">9876543210 / captain123</span>
+                    </button>
+                    <button type="button" onClick={() => autofillCredentials("9999900002", "mod123")} className="p-2.5 rounded-lg bg-bg-elevated hover:bg-white/[0.06] border border-line text-left transition-colors">
+                      <span className="text-text-primary font-semibold block">Moderator</span>
+                      <span className="text-text-muted">9999900002 / mod123</span>
+                    </button>
+                    <button type="button" onClick={() => autofillCredentials("9555544444", "player123")} className="p-2.5 rounded-lg bg-bg-elevated hover:bg-white/[0.06] border border-line text-left transition-colors sm:col-span-2">
+                      <span className="text-text-primary font-semibold block">Standard Player</span>
+                      <span className="text-text-muted">9555544444 / player123</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </form>
           )}
 
