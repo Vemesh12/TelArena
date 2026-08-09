@@ -1,0 +1,231 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────
+   CSS Custom Properties — TelArena Premium Tokens
+───────────────────────────────────────────────── */
+:root {
+  --bg-primary: #09090B;
+  --bg-secondary: #0D0D10;
+  --bg-card: #111217;
+  --accent-red: #EF2D56;
+  --accent-cyan: #00D4FF;
+  --text-primary: #FFFFFF;
+  --text-secondary: #A1A1AA;
+  --line: rgba(255, 255, 255, 0.08);
+}
+
+/* ─────────────────────────────────────────────────
+   Base Styles
+───────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: #2A2A32; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #3A3A45; }
+
+/* ─────────────────────────────────────────────────
+   Typography
+───────────────────────────────────────────────── */
+.font-display { font-family: var(--font-space-grotesk), 'Space Grotesk', sans-serif; }
+.font-heading { font-family: var(--font-space-grotesk), 'Space Grotesk', sans-serif; }
+.font-body { font-family: var(--font-inter), 'Inter', sans-serif; }
+.font-mono { font-family: var(--font-jetbrains-mono), 'JetBrains Mono', monospace; }
+
+/* ─────────────────────────────────────────────────
+   Premium Cards — soft elevation, 16px radius, 1px border
+   (kept the historical `.card-angular*` class names so every
+   page that already references them upgrades automatically)
+───────────────────────────────────────────────── */
+.card-angular {
+  clip-path: none;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.18);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+.card-angular:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), 0 16px 40px rgba(0, 0, 0, 0.28);
+}
+
+.card-angular-sm {
+  clip-path: none;
+  border-radius: 12px;
+}
+
+.card-angular-cyan {
+  clip-path: none;
+  background: var(--bg-card);
+  border: 1px solid rgba(0, 212, 255, 0.24);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.18);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.card-angular-cyan:hover {
+  border-color: rgba(0, 212, 255, 0.45);
+  box-shadow: 0 8px 24px rgba(0, 212, 255, 0.12);
+}
+
+/* ─────────────────────────────────────────────────
+   Glow Effects — toned down to subtle premium accents
+───────────────────────────────────────────────── */
+.glow-red { box-shadow: 0 8px 24px rgba(239, 45, 86, 0.18); }
+.glow-cyan { box-shadow: 0 8px 24px rgba(0, 212, 255, 0.16); }
+.glow-text-red { color: #EF2D56; }
+.glow-text-cyan { color: #00D4FF; }
+.glow-text-gold { color: #FACC15; }
+
+/* ─────────────────────────────────────────────────
+   Background Texture — subtle, no heavy neon grid
+───────────────────────────────────────────────── */
+.neon-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+.grid-fade-mask {
+  mask-image: radial-gradient(ellipse 60% 50% at 50% 0%, black 40%, transparent 100%);
+}
+
+/* ─────────────────────────────────────────────────
+   Buttons — Linear/Riot style: filled / outline / text
+───────────────────────────────────────────────── */
+.btn-primary {
+  @apply relative inline-flex items-center justify-center gap-2 px-6 py-3 font-display font-semibold text-sm text-white rounded-xl;
+  background: var(--accent-red);
+  transition: background-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-primary:hover {
+  background: #FF4570;
+  box-shadow: 0 8px 24px rgba(239, 45, 86, 0.28);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: translateY(0); background: #D6244A; }
+
+.btn-secondary {
+  @apply relative inline-flex items-center justify-center gap-2 px-6 py-3 font-display font-semibold text-sm rounded-xl;
+  color: var(--text-primary);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
+}
+.btn-secondary:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  @apply relative inline-flex items-center justify-center gap-2 px-6 py-3 font-body font-medium text-sm rounded-xl;
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+  background: transparent;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+.btn-ghost:hover { color: var(--text-primary); background: rgba(255, 255, 255, 0.04); }
+
+/* ─────────────────────────────────────────────────
+   Number Ticker (for scores, countdown)
+───────────────────────────────────────────────── */
+.tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* ─────────────────────────────────────────────────
+   Table Styles
+───────────────────────────────────────────────── */
+.data-table {
+  @apply w-full border-collapse;
+}
+.data-table th {
+  @apply font-display text-xs uppercase tracking-widest text-text-secondary py-3 px-4 text-left border-b border-white/5;
+}
+.data-table td {
+  @apply py-3 px-4 text-sm border-b border-white/5;
+}
+.data-table tr:hover td { background: rgba(255,255,255,0.02); }
+.data-table tr.rank-1 td { background: rgba(250, 204, 21, 0.05); }
+.data-table tr.rank-2 td { background: rgba(192, 192, 192, 0.04); }
+.data-table tr.rank-3 td { background: rgba(205, 127, 50, 0.04); }
+
+/* ─────────────────────────────────────────────────
+   Status Badge Colors
+───────────────────────────────────────────────── */
+.badge-live     { @apply bg-status-live/15 text-status-live border border-status-live/30 rounded-md; }
+.badge-upcoming { @apply bg-status-upcoming/15 text-status-upcoming border border-status-upcoming/30 rounded-md; }
+.badge-verified { @apply bg-status-verified/15 text-status-verified border border-status-verified/30 rounded-md; }
+.badge-pending  { @apply bg-status-pending/15 text-status-pending border border-status-pending/30 rounded-md; }
+.badge-rejected { @apply bg-status-rejected/15 text-status-rejected border border-status-rejected/30 rounded-md; }
+
+/* ─────────────────────────────────────────────────
+   Animations
+───────────────────────────────────────────────── */
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(239, 45, 86, 0); }
+  50% { box-shadow: 0 8px 28px rgba(239, 45, 86, 0.3); }
+}
+@keyframes slideInUp {
+  0% { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes scanLine {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(200vh); }
+}
+@keyframes flicker {
+  0%, 95%, 100% { opacity: 1; }
+  96%, 98% { opacity: 0.85; }
+}
+@keyframes ticker {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-glow-pulse { animation: glowPulse 2.4s ease-in-out infinite; }
+.animate-slide-in-up { animation: slideInUp 0.4s ease-out; }
+.animate-slide-in { animation: slideInUp 0.25s ease-out; }
+.animate-fade-in { animation: fadeIn 0.3s ease-out; }
+.animate-flicker { animation: flicker 4s ease-in-out infinite; }
+.animate-ticker { animation: ticker 30s linear infinite; }
+
+/* ─────────────────────────────────────────────────
+   Accent border utilities
+───────────────────────────────────────────────── */
+.border-accent-left {
+  border-left: 3px solid var(--accent-red);
+}
+.border-accent-top {
+  border-top: 2px solid var(--accent-red);
+}
