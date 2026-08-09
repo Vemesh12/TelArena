@@ -1,0 +1,89 @@
+Here's a stack recommendation sized for this project's actual needs — 2000+ players, real-time operations (room releases, live scoring), several third-party integrations, and room to grow into future tournaments/games without a rewrite.
+
+## Frontend
+**Next.js (React) + TypeScript + Tailwind CSS**
+- You already work with Tailwind, and Next.js gives you both the player-facing site and the admin dashboard in one codebase, with API routes for lightweight backend logic if needed.
+- TypeScript matters here specifically because of the TES scoring engine, role permissions, and payout calculations — types catch a lot of bugs in that kind of business logic before they hit production.
+- For dashboards/leaderboards, pair with **Apache ECharts or Recharts** for standings visualizations — consistent with dashboard work you've done before.
+
+## Backend
+**Node.js + NestJS** (not just Express)
+- At Express-only scale this project will get messy fast — you have 16 modules (auth, verification, teams, tournaments, brackets, scoring, disputes, payouts, notifications, audit...). NestJS gives you enforced structure (modules, services, guards for RBAC) that keeps this maintainable as it grows, while still being Node/TypeScript so your frontend and backend share types.
+- If you want to stay in a single framework, **Next.js API routes / Route Handlers** can work for a leaner v1, but NestJS pays off once you have 5 roles and a dozen integrations.
+
+## Database
+**PostgreSQL** as the primary store
+- Your data model is inherently relational (players → teams → tournaments → stages → matches → results → disputes), with real referential integrity needs (a match result must point to a real team in a real tournament). Postgres is the right fit over a NoSQL store here.
+- Use **Prisma** as the ORM — good TypeScript integration, easy migrations, and works well with the audit-log/versioning needs (Section 21 of your BRD).
+
+**Redis** alongside it for:
+- Caching computed leaderboards (recalculating on every read at 2000-player scale is wasteful)
+- Rate-limiting OTP requests
+- Session/token storage
+- Backing a job queue (below)
+
+## Authentication
+**Auth.js (formerly NextAuth) with Discord provider**, or roll your own OAuth2 flow in NestJS with Passport's Discord strategy if you go full NestJS. Either is standard and free, as covered in your BRD.
+
+## Background Jobs / Queue
+**BullMQ (Redis-backed)**
+- Verification calls (OTP send, telecom circle lookup, DigiLocker) shouldn't block the request-response cycle — queue them.
+- Notifications (Discord webhook, email) are naturally async — queue them too, so a slow Discord API doesn't stall registration.
+- This also gives you retry logic for free when a third-party API blips, which matters at your OTP/DigiLocker volume.
+
+## Real-Time Updates
+**Socket.io** (or **Pusher**/**Ably** if you want to skip hosting your own WebSocket server)
+- Needed for: live leaderboard updates after a match result posts, room-credential release notifications, dispute status changes.
+- For a solo/small-team build, Pusher or Ably (managed) is less ops overhead than self-hosting Socket.io — worth the small monthly cost early on.
+
+## File Storage
+**Cloudflare R2** or **AWS S3**
+- For match-result evidence screenshots, dispute evidence, DigiLocker-adjacent files you do choose to keep (not raw Aadhaar, per your policy).
+- R2 is cheaper than S3 with no egress fees, which matters if you're bootstrapping this.
+
+## Notifications
+- **Discord webhooks/bot** (discord.js) for room releases and match alerts — your community already lives there.
+- **Resend** or **AWS SES** for email — cheap, simple transactional email APIs.
+
+## Hosting / DevOps
+- **Frontend:** Vercel (native Next.js fit, free tier covers early stage)
+- **Backend + Postgres + Redis:** Railway or Render for a clean managed setup without full AWS complexity — good until you're well past 2000 players, at which point migrating to AWS/GCP is a natural next step, not a rewrite.
+- **CI/CD:** GitHub Actions — free, standard, easy to wire into either Vercel or Railway deploys.
+- **Monitoring:** Sentry for error tracking (worth having from day one given this handles money/eligibility decisions), plus basic uptime monitoring (e.g. Better Stack).
+
+## Third-Party Integration Layer (from your BRD)
+| Need | Recommended Provider |
+|---|---|
+| OTP | MSG91 or 2Factor.in |
+| Telecom circle | Bundled with OTP provider if available, else Signzy/Karza-class API |
+| DigiLocker e-KYC | Digio or Setu (reseller access, no direct gov partnership needed) |
+
+Wrap all of these behind your own internal `VerificationService` module — never call these vendors directly from multiple places in your code. This is the single most important "future-proofing" move: if you ever switch OTP providers because of cost or reliability, you change one file, not fifteen.
+
+## Future-Proofing Notes
+
+**If you expect this to grow beyond one tournament/one game:**
+- Design the `Tournament`, `Ruleset`, and `ScoringConfig` entities as fully data-driven (which your BRD already does) — this is what lets MBG run a BGMI or Valorant tournament later on the same platform without a rewrite, just new config.
+- Keep the verification module decoupled from the tournament module. Region-eligibility logic shouldn't be entangled with match/bracket logic — you may reuse TES verification for other Telugu-community products beyond esports.
+
+**If you expect a mobile app later:**
+- Build the backend API-first (NestJS REST or GraphQL) rather than tightly coupling logic into Next.js pages. That way a React Native or Flutter app later just becomes another client of the same API — no backend rewrite.
+
+**If you expect much larger scale (10,000+ players, multiple simultaneous tournaments):**
+- Postgres + Redis + a queue comfortably handles this tier without needing microservices. Don't over-engineer into microservices now — a well-structured NestJS monolith with clear module boundaries can be split later if a specific module (e.g., verification) truly needs independent scaling.
+
+## Summary Stack
+```
+Frontend:     Next.js + TypeScript + Tailwind CSS + ECharts/Recharts
+Backend:      NestJS (Node.js + TypeScript)
+Database:     PostgreSQL + Prisma ORM
+Cache/Queue:  Redis + BullMQ
+Real-time:    Socket.io or Pusher/Ably
+Auth:         Discord OAuth (Auth.js or Passport)
+Storage:      Cloudflare R2 / AWS S3
+Notifications: Discord.js (bot/webhooks) + Resend/SES (email)
+Hosting:      Vercel (frontend) + Railway/Render (backend, DB, Redis)
+Monitoring:   Sentry + Better Stack
+```
+
+This gives you a genuinely production-grade setup that's still buildable solo or with a small team, avoids premature complexity (no microservices, no Kubernetes needed yet), and has clear, non-disruptive upgrade paths as MBG's scale grows.

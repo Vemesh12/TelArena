@@ -1,0 +1,519 @@
+// MBG Arena — Prisma Schema (all modules A–P)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// AUTH & PLAYERS (Module A, B)
+// ─────────────────────────────────────────────
+
+enum Role {
+  player
+  moderator
+  admin
+  super_admin
+}
+
+enum VerificationStatus {
+  not_started
+  in_progress
+  auto_approved
+  manual_review
+  auto_rejected
+  approved
+  rejected
+}
+
+model Player {
+  id               String             @id @default(cuid())
+  discordId        String?            @unique
+  discordUsername  String
+  discordAvatar    String?
+  fullName         String?
+  age              Int?
+  primaryLanguage  String?
+  freefireUid      String?
+  phone            String?            @unique
+  password         String?
+  role             Role               @default(player)
+  suspended        Boolean            @default(false)
+  suspendedReason  String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  verification     Verification?
+  teamMemberships  TeamMember[]
+  captainOf        Team[]
+  notifications    Notification[]
+  disputes         Dispute[]
+  auditLogs        AuditLog[]
+  winnings         Payout[]
+  notifPrefs       NotificationPref?
+}
+
+// ─────────────────────────────────────────────
+// VERIFICATION & TES SCORING (Module C)
+// ─────────────────────────────────────────────
+
+model VerificationConfig {
+  id              String   @id @default(cuid())
+  autoApproveMin  Int      @default(60)
+  manualReviewMin Int      @default(40)
+  updatedAt       DateTime @updatedAt
+}
+
+model Verification {
+  id                 String             @id @default(cuid())
+  player             Player             @relation(fields: [playerId], references: [id])
+  playerId           String             @unique
+  status             VerificationStatus @default(not_started)
+  tesScore           Int?
+  tesDecision        String?
+  freefireVerified   Boolean            @default(false)
+  freefireCode       String?
+  freefireScreenshot String?
+  otpVerified        Boolean            @default(false)
+  telecomCircle      String?
+  digilockerUrl      String?
+  digilockerVerified Boolean            @default(false)
+  appealNote         String?
+  signals            Json?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// TEAMS (Module D)
+// ─────────────────────────────────────────────
+
+enum TeamStatus {
+  forming
+  pending
+  confirmed
+}
+
+model Team {
+  id            String       @id @default(cuid())
+  name          String       @unique
+  tag           String       @unique @db.VarChar(6)
+  logoUrl       String?
+  status        TeamStatus   @default(forming)
+  inviteCode    String       @unique @default(cuid())
+  captain       Player       @relation(fields: [captainId], references: [id])
+  captainId     String
+  members       TeamMember[]
+  groupMembers  GroupTeam[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  registrations TournamentRegistration[]
+  matchResults  MatchResult[]
+  disputes      Dispute[]
+  payouts       Payout[]
+  roomSlots     RoomSlot[]
+  standings     StageStanding[]
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  team      Team     @relation(fields: [teamId], references: [id])
+  teamId    String
+  player    Player   @relation(fields: [playerId], references: [id])
+  playerId  String
+  isCore    Boolean  @default(true)
+  joinedAt  DateTime @default(now())
+
+  @@unique([teamId, playerId])
+}
+
+// ─────────────────────────────────────────────
+// TOURNAMENTS (Module E, F)
+// ─────────────────────────────────────────────
+
+enum TournamentFormat {
+  solo
+  duo
+  squad
+}
+
+enum TournamentStatus {
+  draft
+  published
+  registration_open
+  registration_closed
+  ongoing
+  completed
+  cancelled
+}
+
+model Tournament {
+  id                 String            @id @default(cuid())
+  name               String
+  bannerUrl          String?
+  description        String?
+  format             TournamentFormat  @default(squad)
+  status             TournamentStatus  @default(draft)
+  registrationOpen   DateTime?
+  registrationClose  DateTime?
+  maxTeams           Int               @default(48)
+  eligibilityEnabled Boolean           @default(true)
+  prizePool          Float             @default(0)
+  entryFee           Float             @default(0)
+  prizeDist          Json?
+  rulebook           String?
+  rulebookUpdatedAt  DateTime?
+  scoringConfig      ScoringConfig?
+  stages             Stage[]
+  registrations      TournamentRegistration[]
+  announcements      Announcement[]
+  payouts            Payout[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+}
+
+model ScoringConfig {
+  id             String     @id @default(cuid())
+  tournament     Tournament @relation(fields: [tournamentId], references: [id])
+  tournamentId   String     @unique
+  placementTable Json
+  killPoints     Float      @default(1)
+}
+
+// ─────────────────────────────────────────────
+// STAGES & GROUPS (Module G)
+// ─────────────────────────────────────────────
+
+enum StageStatus {
+  upcoming
+  active
+  completed
+}
+
+model Stage {
+  id              String      @id @default(cuid())
+  tournament      Tournament  @relation(fields: [tournamentId], references: [id])
+  tournamentId    String
+  name            String
+  order           Int
+  date            DateTime?
+  advancementRule Json?
+  status          StageStatus @default(upcoming)
+  published       Boolean     @default(false)
+  groups          Group[]
+  rooms           Room[]
+  standings       StageStanding[]
+  bracket         Bracket?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// SINGLE-ELIMINATION BRACKETS (Module G)
+// ─────────────────────────────────────────────
+model Bracket {
+  id        String         @id @default(cuid())
+  stage     Stage          @relation(fields: [stageId], references: [id])
+  stageId   String         @unique
+  type      String         @default("single_elimination")
+  rounds    Int
+  matches   BracketMatch[]
+  createdAt DateTime       @default(now())
+}
+
+model BracketMatch {
+  id          String    @id @default(cuid())
+  bracket     Bracket   @relation(fields: [bracketId], references: [id])
+  bracketId   String
+  round       Int
+  position    Int
+  teamAId     String?
+  teamBId     String?
+  scoreA      Int?
+  scoreB      Int?
+  winnerId    String?
+  status      String    @default("pending")
+  nextMatchId String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([bracketId, round, position])
+}
+
+model Group {
+  id      String      @id @default(cuid())
+  stage   Stage       @relation(fields: [stageId], references: [id])
+  stageId String
+  name    String
+  teams   GroupTeam[]
+  matches Match[]
+}
+
+model GroupTeam {
+  id      String @id @default(cuid())
+  group   Group  @relation(fields: [groupId], references: [id])
+  groupId String
+  team    Team   @relation(fields: [teamId], references: [id])
+  teamId  String
+
+  @@unique([groupId, teamId])
+}
+
+// ─────────────────────────────────────────────
+// REGISTRATIONS (Module F)
+// ─────────────────────────────────────────────
+
+enum RegistrationStatus {
+  registered
+  confirmed
+  waitlisted
+  cancelled
+}
+
+model TournamentRegistration {
+  id           String             @id @default(cuid())
+  tournament   Tournament         @relation(fields: [tournamentId], references: [id])
+  tournamentId String
+  team         Team               @relation(fields: [teamId], references: [id])
+  teamId       String
+  status       RegistrationStatus @default(registered)
+  metadata     Json?
+  createdAt    DateTime           @default(now())
+
+  @@unique([tournamentId, teamId])
+}
+
+// ─────────────────────────────────────────────
+// ROOMS & SLOTS (Module H)
+// ─────────────────────────────────────────────
+
+model Room {
+  id             String     @id @default(cuid())
+  stage          Stage      @relation(fields: [stageId], references: [id])
+  stageId        String
+  roomCode       String
+  password       String
+  map            String?
+  scheduledAt    DateTime
+  releaseMinutes Int        @default(15)
+  slots          RoomSlot[]
+  match          Match?
+  createdAt      DateTime   @default(now())
+}
+
+model RoomSlot {
+  id      String  @id @default(cuid())
+  room    Room    @relation(fields: [roomId], references: [id])
+  roomId  String
+  team    Team    @relation(fields: [teamId], references: [id])
+  teamId  String
+  slotNo  Int
+  noShow  Boolean @default(false)
+
+  @@unique([roomId, teamId])
+  @@unique([roomId, slotNo])
+}
+
+// ─────────────────────────────────────────────
+// MATCHES & SCORING (Module I)
+// ─────────────────────────────────────────────
+
+enum MatchResultStatus {
+  provisional
+  disputed
+  finalized
+  forfeited
+}
+
+model Match {
+  id        String        @id @default(cuid())
+  group     Group         @relation(fields: [groupId], references: [id])
+  groupId   String
+  room      Room          @relation(fields: [roomId], references: [id])
+  roomId    String        @unique
+  playedAt  DateTime?
+  results   MatchResult[]
+  disputes  Dispute[]
+  createdAt DateTime      @default(now())
+}
+
+model MatchResult {
+  id           String            @id @default(cuid())
+  match        Match             @relation(fields: [matchId], references: [id])
+  matchId      String
+  team         Team              @relation(fields: [teamId], references: [id])
+  teamId       String
+  placement    Int
+  kills        Int               @default(0)
+  placementPts Float             @default(0)
+  killPts      Float             @default(0)
+  totalPts     Float             @default(0)
+  evidenceUrl  String?
+  status       MatchResultStatus @default(provisional)
+  finalizedAt  DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@unique([matchId, teamId])
+}
+
+// ─────────────────────────────────────────────
+// LEADERBOARDS (Module J)
+// ─────────────────────────────────────────────
+
+model StageStanding {
+  id            String   @id @default(cuid())
+  stage         Stage    @relation(fields: [stageId], references: [id])
+  stageId       String
+  team          Team     @relation(fields: [teamId], references: [id])
+  teamId        String
+  totalPts      Float    @default(0)
+  totalKills    Int      @default(0)
+  matchesPlayed Int      @default(0)
+  bestPlacement Int?
+  rank          Int?
+  updatedAt     DateTime @updatedAt
+
+  @@unique([stageId, teamId])
+}
+
+// ─────────────────────────────────────────────
+// DISPUTES (Module K)
+// ─────────────────────────────────────────────
+
+enum DisputeStatus {
+  open
+  more_evidence_requested
+  escalated
+  resolved_upheld
+  resolved_rejected
+}
+
+enum DisputeCategory {
+  wrong_kill_count
+  wrong_placement
+  room_connectivity
+  suspected_cheating
+  eligibility_appeal
+  other
+}
+
+model Dispute {
+  id          String          @id @default(cuid())
+  match       Match?          @relation(fields: [matchId], references: [id])
+  matchId     String?
+  team        Team            @relation(fields: [teamId], references: [id])
+  teamId      String
+  raisedBy    Player          @relation(fields: [raisedById], references: [id])
+  raisedById  String
+  category    DisputeCategory
+  description String
+  evidenceUrl String?
+  status      DisputeStatus   @default(open)
+  resolution  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// PAYOUTS (Module L)
+// ─────────────────────────────────────────────
+
+enum PayoutStatus {
+  pending
+  processing
+  paid
+}
+
+model Payout {
+  id           String       @id @default(cuid())
+  tournament   Tournament   @relation(fields: [tournamentId], references: [id])
+  tournamentId String
+  team         Team         @relation(fields: [teamId], references: [id])
+  teamId       String
+  player       Player       @relation(fields: [playerId], references: [id])
+  playerId     String
+  amount       Float
+  placement    Int
+  status       PayoutStatus @default(pending)
+  txRef        String?
+  paidAt       DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// ANNOUNCEMENTS (Module M)
+// ─────────────────────────────────────────────
+
+model Announcement {
+  id           String      @id @default(cuid())
+  tournament   Tournament? @relation(fields: [tournamentId], references: [id])
+  tournamentId String?
+  title        String
+  body         String
+  published    Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// NOTIFICATIONS (Module N)
+// ─────────────────────────────────────────────
+
+enum NotificationType {
+  registration_confirmed
+  verification_status
+  team_confirmed
+  room_released
+  match_result
+  dispute_update
+  payout_update
+  announcement
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  player    Player           @relation(fields: [playerId], references: [id])
+  playerId  String
+  type      NotificationType
+  title     String
+  body      String
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+}
+
+model NotificationPref {
+  id                    String  @id @default(cuid())
+  player                Player  @relation(fields: [playerId], references: [id])
+  playerId              String  @unique
+  registrationConfirmed Boolean @default(true)
+  verificationStatus    Boolean @default(true)
+  teamConfirmed         Boolean @default(true)
+  matchResult           Boolean @default(true)
+  disputeUpdate         Boolean @default(true)
+  payoutUpdate          Boolean @default(true)
+  announcement          Boolean @default(true)
+}
+
+// ─────────────────────────────────────────────
+// AUDIT LOG (Module P)
+// ─────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actor      Player   @relation(fields: [actorId], references: [id])
+  actorId    String
+  actorRole  Role
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+}
