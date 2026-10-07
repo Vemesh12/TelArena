@@ -32,13 +32,46 @@ export class StagesService {
       where: { id: stageId },
       include: {
         tournament: {
-          include: { registrations: { where: { status: 'confirmed' }, include: { team: true } } },
+          include: {
+            registrations: {
+              where: { status: { in: ['confirmed', 'registered'] } },
+              include: { team: true },
+            },
+          },
         },
       },
     });
     if (!stage) throw new NotFoundException('Stage not found');
 
-    const teams = stage.tournament.registrations.map((r: any) => r.team);
+    let teams: any[] = [];
+
+    // If this is stage > 1, check if previous stage had advancing teams
+    if (stage.order > 1) {
+      const prevStage = await this.prisma.stage.findFirst({
+        where: { tournamentId: stage.tournamentId, order: stage.order - 1 },
+      });
+      if (prevStage) {
+        const advRule = (prevStage.advancementRule as any) || {};
+        const topN = advRule.topN || 12;
+        const prevStandings = await this.prisma.stageStanding.findMany({
+          where: { stageId: prevStage.id },
+          orderBy: [{ totalPts: 'desc' }, { totalKills: 'desc' }],
+          take: topN,
+          include: { team: true },
+        });
+        if (prevStandings.length > 0) {
+          teams = prevStandings.map((s) => s.team);
+        }
+      }
+    }
+
+    if (teams.length === 0) {
+      teams = stage.tournament.registrations.map((r: any) => r.team);
+    }
+
+    if (teams.length === 0) {
+      throw new BadRequestException('No teams found to seed into groups for this stage.');
+    }
 
     // Shuffle teams randomly
     const shuffled = [...teams].sort(() => Math.random() - 0.5);
@@ -68,7 +101,7 @@ export class StagesService {
 
   /**
    * Module G — Generate a single-elimination bracket for a stage.
-   * Seeds confirmed teams (optionally in a caller-supplied order), pads the
+   * Seeds confirmed/registered teams (optionally in a caller-supplied order), pads the
    * field to the next power of two with byes, and auto-advances any bye winners.
    */
   async generateBracket(stageId: string, seededTeamIds?: string[]) {
@@ -76,19 +109,48 @@ export class StagesService {
       where: { id: stageId },
       include: {
         tournament: {
-          include: { registrations: { where: { status: 'confirmed' }, include: { team: true } } },
+          include: {
+            registrations: {
+              where: { status: { in: ['confirmed', 'registered'] } },
+              include: { team: true },
+            },
+          },
         },
       },
     });
     if (!stage) throw new NotFoundException('Stage not found');
 
-    const registeredIds = stage.tournament.registrations.map((r) => r.teamId);
+    let registeredIds: string[] = [];
+
+    // If stage > 1, check if previous stage had advancing teams
+    if (stage.order > 1) {
+      const prevStage = await this.prisma.stage.findFirst({
+        where: { tournamentId: stage.tournamentId, order: stage.order - 1 },
+      });
+      if (prevStage) {
+        const advRule = (prevStage.advancementRule as any) || {};
+        const topN = advRule.topN || 16;
+        const prevStandings = await this.prisma.stageStanding.findMany({
+          where: { stageId: prevStage.id },
+          orderBy: [{ totalPts: 'desc' }, { totalKills: 'desc' }],
+          take: topN,
+        });
+        if (prevStandings.length > 0) {
+          registeredIds = prevStandings.map((s) => s.teamId);
+        }
+      }
+    }
+
+    if (registeredIds.length === 0) {
+      registeredIds = stage.tournament.registrations.map((r) => r.teamId);
+    }
+
     let teamIds = seededTeamIds?.length
       ? seededTeamIds.filter((id) => registeredIds.includes(id))
       : [...registeredIds].sort(() => Math.random() - 0.5);
 
     if (teamIds.length < 2) {
-      throw new BadRequestException('Need at least 2 confirmed teams to generate a bracket');
+      throw new BadRequestException('Need at least 2 teams to generate a bracket');
     }
 
     const rounds = Math.ceil(Math.log2(teamIds.length));

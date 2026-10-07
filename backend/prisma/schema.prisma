@@ -306,13 +306,15 @@ model Room {
 }
 
 model RoomSlot {
-  id      String  @id @default(cuid())
-  room    Room    @relation(fields: [roomId], references: [id])
-  roomId  String
-  team    Team    @relation(fields: [teamId], references: [id])
-  teamId  String
-  slotNo  Int
-  noShow  Boolean @default(false)
+  id          String    @id @default(cuid())
+  room        Room      @relation(fields: [roomId], references: [id])
+  roomId      String
+  team        Team      @relation(fields: [teamId], references: [id])
+  teamId      String
+  slotNo      Int
+  noShow      Boolean   @default(false)
+  checkedIn   Boolean   @default(false)
+  checkedInAt DateTime?
 
   @@unique([roomId, teamId])
   @@unique([roomId, slotNo])

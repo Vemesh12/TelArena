@@ -11,10 +11,12 @@ import { DataTable } from "@/components/ui/DataTable";
 import { useToast } from "@/components/ui/Toast";
 import { api } from "@/lib/api";
 import { Modal } from "@/components/ui/Modal";
+import { useSocket } from "@/hooks/useSocket";
 
 export default function PlayerDashboardPage() {
   const { user } = useAuth();
   const toast = useToast();
+  const { subscribeToRoom } = useSocket();
   const [nextMatch, setNextMatch] = useState<any>(null);
   const [myTournaments, setMyTournaments] = useState<any[]>([]);
   const [payouts, setPayouts] = useState<any[]>([]);
@@ -44,6 +46,9 @@ export default function PlayerDashboardPage() {
     ])
       .then(([matchRes, tourneyRes, payoutRes, notifRes, disputesRes]: any) => {
         setNextMatch(matchRes);
+        if (matchRes?.checkedIn) {
+          setIsCheckedIn(true);
+        }
         setMyTournaments(tourneyRes || []);
         setPayouts(payoutRes || []);
         setNotifications(notifRes || []);
@@ -51,6 +56,28 @@ export default function PlayerDashboardPage() {
       })
       .finally(() => setLoading(false));
   }, [user]);
+
+  useEffect(() => {
+    if (!nextMatch?.roomId) return;
+    const unsub = subscribeToRoom(nextMatch.roomId, (data: any) => {
+      setNextMatch((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          isReleased: true,
+          credentials: {
+            roomCode: data.roomCode,
+            password: data.password,
+            map: data.map,
+          },
+        };
+      });
+      toast.success("Credentials Released!", "Custom room details are now available live.");
+    });
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
+  }, [nextMatch?.roomId, subscribeToRoom]);
 
   const handleEvidenceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

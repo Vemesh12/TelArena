@@ -10,6 +10,11 @@ export class PayoutsService {
    * Module L — Calculate and create payout records on tournament finalization.
    */
   async finalizeTournamentPayouts(tournamentId: string) {
+    const existingPayouts = await this.prisma.payout.findMany({ where: { tournamentId } });
+    if (existingPayouts.length > 0) {
+      return existingPayouts;
+    }
+
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
       include: { stages: { orderBy: { order: 'desc' }, take: 1 } },

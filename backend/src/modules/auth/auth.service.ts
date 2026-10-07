@@ -41,16 +41,21 @@ export class AuthService {
   }
 
   async devLogin(role: string = 'player', username?: string) {
-    const devUsername = username || (role === 'admin' ? 'admin_test' : role === 'moderator' ? 'mod_test' : 'captain_hhk');
+    if (process.env.NODE_ENV === 'production') {
+      throw new ForbiddenException('Dev login is strictly disabled in production');
+    }
+    const allowedDevRoles = ['player', 'moderator', 'admin'];
+    const safeRole = allowedDevRoles.includes(role) ? role : 'player';
+    const devUsername = username || (safeRole === 'admin' ? 'admin_test' : safeRole === 'moderator' ? 'mod_test' : 'captain_hhk');
     let player = await this.playersService.findByDiscordUsername(devUsername);
     if (!player) {
       player = await this.playersService.create({
-        discordId: `dev_${role}_${Date.now()}`,
+        discordId: `dev_${safeRole}_${Date.now()}`,
         discordUsername: devUsername,
         discordAvatar: null,
       });
-      if (role && role !== 'player') {
-        await this.playersService.updateRole(player.id, role);
+      if (safeRole && safeRole !== 'player') {
+        await this.playersService.updateRole(player.id, safeRole);
       }
     }
     return this.login(player);
@@ -97,16 +102,29 @@ export class AuthService {
       throw new BadRequestException('Account not found with this mobile number or username');
     }
 
-    if (player.password) {
-      if (!password) {
-        throw new BadRequestException('Password is required for this account');
-      }
-      const isMatch = player.password.startsWith('$2')
-        ? await bcrypt.compare(password, player.password)
-        : player.password === password;
-      if (!isMatch) {
-        throw new BadRequestException('Incorrect mobile number or password');
-      }
+    if (!password) {
+      throw new BadRequestException('Password is required to sign in');
+    }
+
+    if (!player.password) {
+      throw new BadRequestException(
+        'This account was registered via Discord or has no password configured. Please sign in with Discord or reset your password.',
+      );
+    }
+
+    const isBcrypt = player.password.startsWith('$2');
+    const isMatch = isBcrypt
+      ? await bcrypt.compare(password, player.password)
+      : player.password === password;
+
+    if (!isMatch) {
+      throw new BadRequestException('Incorrect mobile number or password');
+    }
+
+    // Automatically upgrade legacy plaintext password to secure bcrypt hash
+    if (!isBcrypt) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await this.playersService.updatePassword(player.id, hashedPassword);
     }
 
     return this.login(player);
@@ -140,10 +158,7 @@ export class AuthService {
 
     // Hash password with bcrypt (cost factor 10)
     const hashedPassword = await bcrypt.hash(data.password, 10);
-    await this.playersService['prisma'].player.update({
-      where: { id: player.id },
-      data: { password: hashedPassword },
-    });
+    await this.playersService.updatePassword(player.id, hashedPassword);
 
     const updatedPlayer = await this.playersService.findById(player.id);
     return this.login(updatedPlayer);

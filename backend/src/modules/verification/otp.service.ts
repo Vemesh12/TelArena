@@ -13,39 +13,52 @@ export class OtpService {
 
   /**
    * Send OTP to phone number.
-   * Dev mode: logs stub OTP to console.
-   * Prod mode: dispatches SMS via MSG91 HTTP API.
+   * If real SMS gateway is not configured or SHOW_OTP_ON_SCREEN is enabled,
+   * generates a dynamic 6-digit OTP and returns it in the response for on-screen display.
    */
-  async sendOtp(phone: string): Promise<{ success: boolean; sessionId?: string }> {
+  async sendOtp(phone: string): Promise<{ success: boolean; sessionId?: string; otp?: string; message?: string }> {
     const isProd = this.config.get('NODE_ENV') === 'production';
     const authKey = this.config.get('MSG91_AUTH_KEY');
     const templateId = this.config.get('MSG91_TEMPLATE_ID');
+    const cleanPhone = phone.replace(/\D/g, '').slice(-10);
 
-    // Production: Send real SMS via MSG91 API
+    // Configurable toggle: defaults to true unless explicitly disabled with SHOW_OTP_ON_SCREEN=false
+    const showOtpOnScreen = this.config.get('SHOW_OTP_ON_SCREEN') !== 'false';
+
+    // Generate real dynamic 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    global['__otpStore'] = global['__otpStore'] || {};
+    global['__otpStore'][cleanPhone] = otp;
+    global['__otpStore'][phone] = otp;
+
+    this.logger.log(`[OTP] Generated verification OTP for ${cleanPhone}: ${otp}`);
+
+    // If in production and MSG91 auth key is configured and valid
     if (isProd && authKey && !authKey.includes('YOUR_MSG91_KEY')) {
       try {
-        this.logger.log(`[PROD MSG91] Sending SMS OTP to ${phone}`);
+        this.logger.log(`[PROD MSG91] Sending SMS OTP to ${cleanPhone}`);
         const res = await fetch(
-          `https://control.msg91.com/api/v5/otp?template_id=${templateId}&mobile=${phone}&authkey=${authKey}`,
+          `https://control.msg91.com/api/v5/otp?template_id=${templateId}&mobile=${cleanPhone}&authkey=${authKey}`,
           { method: 'POST' },
         );
         const data: any = await res.json();
-        if (data?.type === 'success') {
+        if (data?.type === 'success' && !showOtpOnScreen) {
           return { success: true, sessionId: data?.message };
         }
       } catch (err: any) {
-        this.logger.error(`[PROD MSG91] Failed to send SMS: ${err.message}. Falling back to dev stub.`);
+        this.logger.error(`[PROD MSG91] SMS gateway dispatch failed: ${err.message}. Showing on-screen OTP.`);
       }
     }
 
-    // Development Mode (or Fallback): Memory store stub OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    this.logger.log(`[DEV STUB] OTP generated for ${phone}: ${otp}`);
-
-    global['__otpStore'] = global['__otpStore'] || {};
-    global['__otpStore'][phone] = otp;
-
-    return { success: true, sessionId: `dev_stub_${Date.now()}` };
+    return {
+      success: true,
+      sessionId: `otp_${Date.now()}`,
+      otp: showOtpOnScreen ? otp : undefined,
+      message: showOtpOnScreen
+        ? `Verification code: ${otp}`
+        : `Verification code sent to ${phone}`,
+    };
   }
 
   /**
@@ -54,27 +67,30 @@ export class OtpService {
   async verifyOtp(phone: string, otp: string): Promise<boolean> {
     const isProd = this.config.get('NODE_ENV') === 'production';
     const authKey = this.config.get('MSG91_AUTH_KEY');
+    const cleanPhone = phone.replace(/\D/g, '').slice(-10);
 
-    // Production: Verify against MSG91 API
+    // Production: Verify against external MSG91 API if configured
     if (isProd && authKey && !authKey.includes('YOUR_MSG91_KEY')) {
       try {
         const res = await fetch(
-          `https://control.msg91.com/api/v5/otp/verify?otp=${otp}&mobile=${phone}&authkey=${authKey}`,
+          `https://control.msg91.com/api/v5/otp/verify?otp=${otp}&mobile=${cleanPhone}&authkey=${authKey}`,
           { method: 'POST' },
         );
         const data: any = await res.json();
         if (data?.type === 'success') return true;
       } catch (err: any) {
-        this.logger.error(`[PROD MSG91] OTP verification failed: ${err.message}`);
+        this.logger.error(`[PROD MSG91] External OTP verification failed: ${err.message}`);
       }
     }
 
-    // Development Mode: Check local memory store
-    const stored = global['__otpStore']?.[phone];
-    if (stored === otp || otp === '123456') {
+    // Dynamic generated OTP verification
+    const stored = global['__otpStore']?.[cleanPhone] || global['__otpStore']?.[phone];
+    if (stored && stored === otp) {
+      delete global['__otpStore']?.[cleanPhone];
       delete global['__otpStore']?.[phone];
       return true;
     }
+
     return false;
   }
 

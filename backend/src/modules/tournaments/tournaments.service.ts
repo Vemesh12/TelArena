@@ -191,6 +191,33 @@ export class TournamentsService {
       throw new BadRequestException('Tournament registration is not open');
     }
 
+    if (tournament.eligibilityEnabled) {
+      const team = await this.prisma.team.findUnique({
+        where: { id: teamId },
+        include: { members: { include: { player: { include: { verification: true } } } } },
+      });
+      if (!team) throw new NotFoundException('Team not found');
+
+      const coreMembers = team.members.filter((m) => m.isCore);
+      if (coreMembers.length < 4) {
+        throw new BadRequestException(
+          `Squad roster must have 4 core members to register (currently ${coreMembers.length}/4). Complete your roster on the Teams page.`,
+        );
+      }
+
+      const approvedCount = coreMembers.filter(
+        (m) =>
+          m.player?.verification?.status === 'auto_approved' ||
+          m.player?.verification?.status === 'approved',
+      ).length;
+
+      if (approvedCount < 3) {
+        throw new BadRequestException(
+          `Squad does not meet TES eligibility requirements: at least 3 of 4 core players must be TES-verified (currently ${approvedCount}/4).`,
+        );
+      }
+    }
+
     const count = await this.prisma.tournamentRegistration.count({
       where: { tournamentId, status: { not: 'cancelled' } },
     });
@@ -223,5 +250,16 @@ export class TournamentsService {
       where: { id: regId },
       data: { status: status as any },
     });
+  }
+
+  async confirmAllEligibleRegistrations(tournamentId: string) {
+    const updated = await this.prisma.tournamentRegistration.updateMany({
+      where: {
+        tournamentId,
+        status: 'registered',
+      },
+      data: { status: 'confirmed' },
+    });
+    return { success: true, count: updated.count, message: `Confirmed ${updated.count} registrations.` };
   }
 }

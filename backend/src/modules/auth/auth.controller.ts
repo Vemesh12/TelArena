@@ -7,6 +7,7 @@ import {
   Res,
   UseGuards,
   Redirect,
+  ForbiddenException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
@@ -41,6 +42,9 @@ export class AuthController {
 
   @Post('dev-login')
   devLogin(@Body() body: DevLoginDto) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new ForbiddenException('Dev login endpoint is disabled in production environment');
+    }
     return this.authService.devLogin(body?.role, body?.username);
   }
 

@@ -135,7 +135,7 @@ async function main() {
 
   const p2 = await prisma.player.upsert({
     where: { discordId: 'dev_player_1004' },
-    update: {},
+    update: { password: hashedPlayerPass },
     create: {
       discordId: 'dev_player_1004',
       discordUsername: 'player_hhk2',
@@ -144,7 +144,7 @@ async function main() {
       primaryLanguage: 'Telugu',
       freefireUid: '888111223',
       phone: '9876543211',
-      password: 'player123',
+      password: hashedPlayerPass,
       role: 'player',
       verification: {
         create: {
@@ -161,7 +161,7 @@ async function main() {
 
   const p3 = await prisma.player.upsert({
     where: { discordId: 'dev_player_1005' },
-    update: {},
+    update: { password: hashedPlayerPass },
     create: {
       discordId: 'dev_player_1005',
       discordUsername: 'player_hhk3',
@@ -170,7 +170,7 @@ async function main() {
       primaryLanguage: 'Telugu',
       freefireUid: '888111224',
       phone: '9876543212',
-      password: 'player123',
+      password: hashedPlayerPass,
       role: 'player',
       verification: {
         create: {
@@ -187,7 +187,7 @@ async function main() {
 
   const p4 = await prisma.player.upsert({
     where: { discordId: 'dev_player_1006' },
-    update: {},
+    update: { password: hashedPlayerPass },
     create: {
       discordId: 'dev_player_1006',
       discordUsername: 'player_hhk4',
@@ -196,7 +196,7 @@ async function main() {
       primaryLanguage: 'Telugu',
       freefireUid: '888111225',
       phone: '9876543213',
-      password: 'player123',
+      password: hashedPlayerPass,
       role: 'player',
       verification: {
         create: {
@@ -213,7 +213,7 @@ async function main() {
 
   const devPlayer = await prisma.player.upsert({
     where: { discordId: 'dev_player_1008' },
-    update: { phone: '9555544444', password: 'player123', role: 'player' },
+    update: { phone: '9555544444', password: hashedPlayerPass, role: 'player' },
     create: {
       discordId: 'dev_player_1008',
       discordUsername: 'player_test',
@@ -222,7 +222,7 @@ async function main() {
       primaryLanguage: 'Telugu',
       freefireUid: '666111222',
       phone: '9555544444',
-      password: 'player123',
+      password: hashedPlayerPass,
       role: 'player',
       verification: {
         create: {

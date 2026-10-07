@@ -40,10 +40,7 @@ export default function AdminDashboardPage() {
   const [playersList, setPlayersList] = useState<any[]>([]);
   const [playerSearch, setPlayerSearch] = useState("");
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
-  const [disputesList, setDisputesList] = useState<any[]>([
-    { id: "d1", team: { name: "Hyderabad Hawks" }, category: "wrong_kill_count", description: "Match 2 screenshot shows 12 kills, system entered 10", status: "open" },
-    { id: "d2", team: { name: "Vizag Vipers" }, category: "room_connectivity", description: "Room code delivered 2 mins late to Slot 5", status: "open" },
-  ]);
+  const [disputesList, setDisputesList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Dynamic Matches & Payouts state
@@ -86,7 +83,7 @@ export default function AdminDashboardPage() {
       api.getDigilockerPending().catch(() => []),
       api.getAdminPlayers().catch(() => []),
       api.getAuditLogs().catch(() => []),
-      api.getMyDisputes().catch(() => []),
+      api.getDisputesQueue().catch(() => []),
       api.getAllMatches().catch(() => []),
       api.getTournaments().catch(() => []),
     ])
@@ -96,7 +93,7 @@ export default function AdminDashboardPage() {
         setPendingDigilockers(digiRes || []);
         setPlayersList(playersRes || []);
         setAuditLogs(auditRes || []);
-        if (disputesRes && disputesRes.length > 0) setDisputesList(disputesRes);
+        setDisputesList(disputesRes || []);
         if (matchesRes && matchesRes.length > 0) {
           setMatchesList(matchesRes);
           setSelectedMatchId(matchesRes[0].id);
@@ -454,7 +451,26 @@ export default function AdminDashboardPage() {
               <div>
                 <CardHeader title="Tournament Registrations & Teams" subtitle="Verify receipts, check team leaders, and approve lobby entries" />
               </div>
-              <div>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={async () => {
+                    if (!selectedTournId) return;
+                    try {
+                      const res: any = await api.confirmAllRegistrations(selectedTournId);
+                      toast.success("Teams Confirmed", res.message || "All eligible registered squads confirmed.");
+                      setSelectedTournRegistrations((prev) =>
+                        prev.map((item) => (item.status === "registered" ? { ...item, status: "confirmed" } : item))
+                      );
+                    } catch (err: any) {
+                      toast.error("Confirm Failed", err.message);
+                    }
+                  }}
+                  disabled={selectedTournRegistrations.filter((r) => r.status === "registered").length === 0}
+                >
+                  ⚡ Confirm All Eligible Teams
+                </Button>
                 <select
                   value={selectedTournId}
                   onChange={(e) => setSelectedTournId(e.target.value)}

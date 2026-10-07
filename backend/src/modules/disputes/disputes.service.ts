@@ -17,6 +17,13 @@ export class DisputesService {
     description: string;
     evidenceUrl?: string;
   }) {
+    if (data.matchId) {
+      await this.prisma.matchResult.updateMany({
+        where: { matchId: data.matchId, teamId: data.teamId, status: 'provisional' },
+        data: { status: 'disputed' },
+      });
+    }
+
     return this.prisma.dispute.create({
       data: {
         matchId: data.matchId,
@@ -55,6 +62,14 @@ export class DisputesService {
       where: { id: disputeId },
       data: { status: status as any, resolution: data.resolution, resolvedAt: new Date() },
     });
+
+    // If dispute rejected, restore match result back to provisional for finalization review
+    if (!data.upheld && dispute.matchId) {
+      await this.prisma.matchResult.updateMany({
+        where: { matchId: dispute.matchId, teamId: dispute.teamId, status: 'disputed' },
+        data: { status: 'provisional' },
+      });
+    }
 
     if (actorId) {
       await this.auditService.log({

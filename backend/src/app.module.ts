@@ -34,11 +34,14 @@ import { EventsModule } from './events/events.module';
         const raw = config.get('REDIS_URL') || 'redis://localhost:6379';
         try {
           const redisUrl = new URL(raw);
+          const isTls = redisUrl.protocol === 'rediss:';
           return {
             redis: {
               host: redisUrl.hostname,
-              port: Number(redisUrl.port) || 6379,
+              port: Number(redisUrl.port) || (isTls ? 6380 : 6379),
+              username: redisUrl.username || undefined,
               password: redisUrl.password || undefined,
+              tls: isTls ? { rejectUnauthorized: false } : undefined,
             },
           };
         } catch {

@@ -84,6 +84,11 @@ class ApiClient {
       body: JSON.stringify({ status }),
     });
   }
+  async confirmAllRegistrations(id: string) {
+    return this.request(`/tournaments/${id}/registrations/confirm-all`, {
+      method: "POST",
+    });
+  }
   async createTournament(data: {
     name: string;
     format?: string;
@@ -148,6 +153,9 @@ class ApiClient {
   async getLeaderboard(tournamentId: string, stageId?: string) {
     return this.request(`/leaderboard/tournament/${tournamentId}${stageId ? `?stageId=${stageId}` : ""}`);
   }
+  async getGlobalTeamRankings(limit = 50) {
+    return this.request(`/leaderboard/teams/rankings?limit=${limit}`);
+  }
   async exportLeaderboardCsv(tournamentId: string, stageId?: string): Promise<Blob> {
     const token = this.getToken();
     const res = await fetch(
@@ -169,6 +177,7 @@ class ApiClient {
   // Disputes
   async raiseDispute(data: any) { return this.request("/disputes", { method: "POST", body: JSON.stringify(data) }); }
   async getMyDisputes() { return this.request("/disputes/mine"); }
+  async getDisputesQueue(status?: string) { return this.request(`/disputes/queue${status ? `?status=${status}` : ""}`); }
 
   // Payouts
   async getMyPayouts() { return this.request("/payouts/mine"); }
@@ -181,8 +190,11 @@ class ApiClient {
   // Rooms
   async getNextMatch() { return this.request("/rooms/next-match"); }
   async checkInSquad() { return this.request("/rooms/check-in", { method: "POST" }); }
-  async updateRoomSchedule(roomId: string, scheduledAt: string, map?: string) {
-    return this.request(`/rooms/${roomId}`, { method: "PATCH", body: JSON.stringify({ scheduledAt, map }) });
+  async updateRoom(roomId: string, data: { scheduledAt?: string; map?: string; roomCode?: string; password?: string; releaseMinutes?: number }) {
+    return this.request(`/rooms/${roomId}`, { method: "PATCH", body: JSON.stringify(data) });
+  }
+  async updateRoomSchedule(roomId: string, scheduledAt: string, map?: string, roomCode?: string, password?: string) {
+    return this.request(`/rooms/${roomId}`, { method: "PATCH", body: JSON.stringify({ scheduledAt, map, roomCode, password }) });
   }
 
   // Matches (Module I)

@@ -66,4 +66,8 @@ export class PlayersService {
   async updateRole(id: string, role: string) {
     return this.prisma.player.update({ where: { id }, data: { role: role as any } });
   }
+
+  async updatePassword(id: string, password: string) {
+    return this.prisma.player.update({ where: { id }, data: { password } });
+  }
 }

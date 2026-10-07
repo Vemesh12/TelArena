@@ -6,6 +6,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { CardHeader } from "@/components/ui/Card";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
+import { useSocket } from "@/hooks/useSocket";
 
 function rankClass(rank: number) {
   const base = "font-display font-semibold text-sm tabular-nums";
@@ -17,28 +18,46 @@ function rankClass(rank: number) {
 
 export default function GlobalLeaderboardPage() {
   const toast = useToast();
+  const { subscribeToTournament } = useSocket();
   const [standings, setStandings] = useState<any[]>([]);
   const [tournamentId, setTournamentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
-    // Fetch top standings from active tournament
-    api.getTournaments("ongoing")
-      .then((tList: any) => {
-        if (tList && tList.length > 0) {
-          setTournamentId(tList[0].id);
-          return api.getLeaderboard(tList[0].id);
+    // Fetch top standings from tournaments or overall global rankings
+    api.getTournaments()
+      .then(async (tList: any) => {
+        const activeOrCompleted = (tList || []).find((t: any) => t.status === "ongoing" || t.status === "completed" || t.status === "published");
+        if (activeOrCompleted) {
+          setTournamentId(activeOrCompleted.id);
+          const board = await api.getLeaderboard(activeOrCompleted.id).catch(() => []);
+          if (Array.isArray(board) && board.length > 0) return board;
         }
-        return [];
+        // Fallback to global team rankings across all matches
+        const globalRankings = await api.getGlobalTeamRankings().catch(() => []);
+        return globalRankings || [];
       })
       .then((res: any) => setStandings(res || []))
       .catch(() => setStandings([]))
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (!tournamentId) return;
+    const unsub = subscribeToTournament(tournamentId, (data: any) => {
+      if (Array.isArray(data)) {
+        setStandings(data);
+        toast.info("Leaderboard Updated", "New match results processed live!");
+      }
+    });
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
+  }, [tournamentId, subscribeToTournament]);
+
   const handleExport = async () => {
-    if (!tournamentId) return toast.error("No Active Tournament", "There's no ongoing tournament to export standings for.");
+    if (!tournamentId) return toast.error("No Active Tournament", "There is no active tournament selected to export standings for.");
     setExporting(true);
     try {
       const blob = await api.exportLeaderboardCsv(tournamentId);
@@ -79,12 +98,7 @@ export default function GlobalLeaderboardPage() {
           <CardHeader title="Ranked Standings" subtitle="Live placement points + kills cumulative leaderboard" />
 
           <DataTable
-            data={standings.length > 0 ? standings : [
-              { rank: 1, team: { name: "Hyderabad Hawks", tag: "HHK" }, totalPts: 142, totalKills: 45, matchesPlayed: 5, bestPlacement: 1 },
-              { rank: 2, team: { name: "Vizag Vipers", tag: "VVP" }, totalPts: 128, totalKills: 39, matchesPlayed: 5, bestPlacement: 1 },
-              { rank: 3, team: { name: "Warangal Warriors", tag: "WWR" }, totalPts: 98, totalKills: 28, matchesPlayed: 5, bestPlacement: 2 },
-              { rank: 4, team: { name: "Nellore Ninjas", tag: "NNJ" }, totalPts: 84, totalKills: 22, matchesPlayed: 5, bestPlacement: 3 },
-            ]}
+            data={standings}
             loading={loading}
             onExportCsv={handleExport}
             columns={[

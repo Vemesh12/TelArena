@@ -22,27 +22,27 @@ interface StageVisualizerProps {
 const defaultStages: StageItem[] = [
   {
     id: "stage_q1",
-    name: "Open Qualifiers (48 Squads)",
-    status: "completed",
+    name: "Qualifiers (Round 1)",
+    status: "upcoming",
     teamsCount: 48,
-    dateStr: "Jul 15 – Jul 18",
-    advancement: "Top 24 teams advance to Group Stage",
+    dateStr: "Post-Registration",
+    advancement: "Top squads advance to Stage 2",
   },
   {
     id: "stage_g1",
-    name: "Group Stage (Groups A–D)",
-    status: "active",
+    name: "Semi-Finals (Group Stage)",
+    status: "upcoming",
     teamsCount: 24,
-    dateStr: "Jul 20 – Jul 24",
-    advancement: "Top 12 teams advance to Grand Finals",
+    dateStr: "Tournament Day 2",
+    advancement: "Top 12 squads advance to Grand Finals",
   },
   {
     id: "stage_f1",
-    name: "Grand Finals (12 Squads)",
+    name: "Grand Finals",
     status: "upcoming",
     teamsCount: 12,
-    dateStr: "Jul 26 – Jul 28",
-    advancement: "₹50,000 prize pool distribution",
+    dateStr: "Championship Day",
+    advancement: "Prize pool & championship glory",
   },
 ];
 

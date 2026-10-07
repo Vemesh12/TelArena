@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, UseGuards, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { RoomsService } from './rooms.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -55,7 +55,7 @@ export class RoomsController {
   @Post('check-in')
   async checkInSquad(@CurrentUser() user: any) {
     const team = await this.teamsService.getMyTeam(user.sub);
-    if (!team) throw new Error('You must be on a team to check in');
+    if (!team) throw new BadRequestException('You must be on a team to check in');
     return this.roomsService.checkInSquad(team.id);
   }
 

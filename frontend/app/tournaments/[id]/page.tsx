@@ -80,19 +80,35 @@ export default function TournamentDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  const [userTeam, setUserTeam] = useState<any>(null);
+  const [userMatch, setUserMatch] = useState<any>(null);
+
+  useEffect(() => {
+    if (user) {
+      api.getMyNextMatch()
+        .then((res: any) => {
+          if (res) setUserMatch(res);
+        })
+        .catch(() => setUserMatch(null));
+    } else {
+      setUserMatch(null);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (showRegModal) {
       api.getMyTeam()
         .then((res: any) => {
+          setUserTeam(res);
           if (res) {
             setRegTeamName(res.name || "");
-            setRegLeaderName(user?.fullName || "");
+            setRegLeaderName(user?.fullName || user?.discordUsername || "");
             setRegLeaderUid(user?.freefireUid || "");
             setRegContactPhone(user?.phone || "");
             setRegWhatsappPhone(user?.phone || "");
           }
         })
-        .catch(() => {});
+        .catch(() => setUserTeam(null));
     }
   }, [showRegModal, user]);
 
@@ -113,6 +129,12 @@ export default function TournamentDetailPage() {
   };
 
   const handleRegister = async () => {
+    if (!userTeam) {
+      return toast.error("Squad Required", "You must create or join a squad at /teams first before registering for this tournament.");
+    }
+    if (user?.id && userTeam.captainId !== user.id) {
+      return toast.error("Captain Only", "Only the squad captain can register the team for this tournament.");
+    }
     if (!regTeamName) return toast.error("Error", "Please enter Team Name");
     if (!regLeaderName) return toast.error("Error", "Please enter Leader Name");
     if (!regLeaderUid) return toast.error("Error", "Please enter Leader UID");
@@ -134,7 +156,7 @@ export default function TournamentDetailPage() {
       };
 
       await api.registerForTournament(id as string, metadata);
-      toast.success("Registration Submitted", "Your registration has been submitted and is pending verification!");
+      toast.success("Registration Submitted", "Your registration has been submitted and confirmed!");
       const updated = await api.getRegistrations(id as string) as any[];
       setRegistrations(updated);
       setShowRegModal(false);
@@ -207,10 +229,42 @@ export default function TournamentDetailPage() {
         </motion.div>
 
         {/* Live Match Room Credentials & Countdown */}
-        <RoomReleaseTimer roomCode="TEL-849201" password="4910" slotNo={3} />
+        {userMatch ? (
+          <RoomReleaseTimer
+            roomId={userMatch.roomId}
+            roomCode={userMatch.credentials?.roomCode}
+            password={userMatch.credentials?.password}
+            scheduledAt={userMatch.scheduledAt}
+            releaseMinutes={userMatch.releaseMinutes || 15}
+            slotNo={userMatch.slotNo}
+            map={userMatch.credentials?.map}
+          />
+        ) : tournamentMatches.some((m: any) => m.status === 'scheduled') ? (
+          <RoomReleaseTimer
+            scheduledAt={tournamentMatches.find((m: any) => m.status === 'scheduled')?.scheduledAt}
+            releaseMinutes={15}
+          />
+        ) : null}
 
         {/* Tournament Bracket & Stage Progression Visualizer */}
-        <StageVisualizer />
+        <StageVisualizer
+          stages={
+            tournament?.stages && tournament.stages.length > 0
+              ? tournament.stages.map((stg: any, idx: number) => ({
+                  id: stg.id,
+                  name: stg.name,
+                  status: (stg.status === "in_progress" ? "active" : stg.status === "completed" ? "completed" : "upcoming") as "active" | "completed" | "upcoming",
+                  teamsCount: stg.groups?.reduce((acc: number, g: any) => acc + (g.matches?.[0]?.results?.length || 12), 0) || (stg.stageNumber === 1 ? (tournament.maxTeams || 48) : 12),
+                  dateStr: tournament.startDate ? new Date(tournament.startDate).toLocaleDateString("en-IN", { month: "short", day: "numeric" }) : "TBA",
+                  advancement: stg.advancementCount
+                    ? `Top ${stg.advancementCount} squads advance to next stage`
+                    : idx === tournament.stages.length - 1
+                    ? `Grand Finals: ₹${(tournament.prizePool || 0).toLocaleString("en-IN")} prize pool distribution`
+                    : "Stage winners advance",
+                }))
+              : undefined
+          }
+        />
 
         {/* Rulebook & Scoring Grid */}
         <div className="grid md:grid-cols-2 gap-6">
@@ -530,6 +584,18 @@ export default function TournamentDetailPage() {
                   <div className="mb-6">
                     <h2 className="font-display font-black text-2xl text-text-primary uppercase tracking-tight">Registration Dashboard</h2>
                     <p className="text-xs text-text-secondary mt-1">Please fill out your team registration details carefully.</p>
+                    {!userTeam ? (
+                      <div className="mt-3 p-3.5 rounded-xl bg-accent-red/10 border border-accent-red/30 text-xs text-accent-red flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                        <span>⚠️ You do not currently belong to a squad. You must create or join a squad first before registering.</span>
+                        <a href="/teams" className="px-3 py-1 bg-accent-red text-white font-semibold rounded-lg shrink-0 hover:bg-accent-red/80 transition-all">
+                          Go to Teams HQ →
+                        </a>
+                      </div>
+                    ) : user?.id && userTeam.captainId !== user.id ? (
+                      <div className="mt-3 p-3.5 rounded-xl bg-accent-cyan/10 border border-accent-cyan/30 text-xs text-accent-cyan">
+                        ℹ️ You are registered as a squad member. Only your captain (<strong>@{userTeam.captain?.discordUsername || "Captain"}</strong>) can submit tournament registrations.
+                      </div>
+                    ) : null}
                   </div>
 
                   {/* Inputs */}

@@ -82,7 +82,7 @@ export class RoomsService {
         teamId,
         room: { scheduledAt: { gte: now } },
       },
-      include: { room: true },
+      include: { room: { include: { match: true } } },
       orderBy: { room: { scheduledAt: 'asc' } },
     });
     if (!slot) return null;
@@ -93,8 +93,14 @@ export class RoomsService {
     const isReleased = now >= releaseTime;
 
     return {
+      id: slot.room.match?.id || slot.room.id,
+      roomId: slot.room.id,
+      matchId: slot.room.match?.id || null,
+      slotId: slot.id,
       scheduledAt: slot.room.scheduledAt,
       slotNo: slot.slotNo,
+      checkedIn: slot.checkedIn,
+      checkedInAt: slot.checkedInAt,
       isReleased,
       releaseAt: releaseTime,
       credentials: isReleased
@@ -104,12 +110,26 @@ export class RoomsService {
   }
 
   async checkInSquad(teamId: string) {
-    const nextMatch = await this.getMyNextMatch(teamId);
-    if (!nextMatch) throw new NotFoundException('No upcoming match room found for squad');
+    const now = new Date();
+    const slot = await this.prisma.roomSlot.findFirst({
+      where: {
+        teamId,
+        room: { scheduledAt: { gte: now } },
+      },
+      include: { room: true },
+      orderBy: { room: { scheduledAt: 'asc' } },
+    });
+    if (!slot) throw new NotFoundException('No upcoming match room found for squad');
+
+    const updated = await this.prisma.roomSlot.update({
+      where: { id: slot.id },
+      data: { checkedIn: true, checkedInAt: new Date() },
+    });
+
     return {
       success: true,
-      message: `Squad checked in for Slot #${nextMatch.slotNo}. Status set to READY ⚔️`,
-      checkedInAt: new Date(),
+      message: `Squad checked in for Slot #${slot.slotNo}. Status set to READY ⚔️`,
+      checkedInAt: updated.checkedInAt,
     };
   }
 
@@ -149,12 +169,15 @@ export class RoomsService {
     }
   }
 
-  async updateRoom(roomId: string, data: { scheduledAt?: string; map?: string }) {
+  async updateRoom(roomId: string, data: { roomCode?: string; password?: string; scheduledAt?: string; map?: string; releaseMinutes?: number }) {
     return this.prisma.room.update({
       where: { id: roomId },
       data: {
+        roomCode: data.roomCode,
+        password: data.password,
         scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
         map: data.map,
+        releaseMinutes: data.releaseMinutes,
       },
     });
   }

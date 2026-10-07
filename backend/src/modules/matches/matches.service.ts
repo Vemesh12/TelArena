@@ -144,9 +144,17 @@ export class MatchesService {
   }
 
   /**
-   * Finalize a provisional result — updates cumulative standings.
+   * Finalize a provisional result — updates cumulative standings deterministically.
    */
   async finalizeResult(matchResultId: string, actorId?: string, actorRole?: string) {
+    const existing = await this.prisma.matchResult.findUnique({
+      where: { id: matchResultId },
+    });
+    if (!existing) throw new NotFoundException('Match result not found');
+    if (existing.status === 'finalized') {
+      throw new BadRequestException('This match result has already been finalized');
+    }
+
     const result = await this.prisma.matchResult.update({
       where: { id: matchResultId },
       data: { status: 'finalized', finalizedAt: new Date() },
@@ -164,12 +172,13 @@ export class MatchesService {
       },
     });
 
-    await this.updateStageStandings(result.match.group.stageId, result.teamId, result);
+    const stageId = result.match.group.stageId;
+    await this.recalculateStageStandings(stageId);
 
     // Fetch tournament ID and trigger real-time WebSocket leaderboard broadcast
     const tournamentId = result.match.group.stage.tournamentId;
     const standings = await this.prisma.stageStanding.findMany({
-      where: { stageId: result.match.group.stageId },
+      where: { stageId },
       orderBy: [{ rank: 'asc' }],
     });
     this.eventsGateway.emitLeaderboardUpdate(tournamentId, standings);
@@ -195,37 +204,64 @@ export class MatchesService {
     return result;
   }
 
-  private async updateStageStandings(stageId: string, teamId: string, result: any) {
-    const existing = await this.prisma.stageStanding.findUnique({
-      where: { stageId_teamId: { stageId, teamId } },
+  /**
+   * Recompute full stage standings from finalized match results deterministically.
+   * Eliminates score duplication and mathematical drift.
+   */
+  async recalculateStageStandings(stageId: string) {
+    // Find all groups in this stage
+    const groups = await this.prisma.group.findMany({
+      where: { stageId },
+      select: { id: true },
+    });
+    const groupIds = groups.map((g) => g.id);
+
+    // Fetch all finalized match results across this stage
+    const finalizedResults = await this.prisma.matchResult.findMany({
+      where: {
+        match: { groupId: { in: groupIds } },
+        status: 'finalized',
+      },
     });
 
-    if (existing) {
-      await this.prisma.stageStanding.update({
-        where: { stageId_teamId: { stageId, teamId } },
-        data: {
-          totalPts: existing.totalPts + result.totalPts,
-          totalKills: existing.totalKills + result.kills,
-          matchesPlayed: existing.matchesPlayed + 1,
-          bestPlacement: existing.bestPlacement
-            ? Math.min(existing.bestPlacement, result.placement)
-            : result.placement,
-        },
+    // Aggregate stats per team
+    const teamMap = new Map<string, { totalPts: number; totalKills: number; matchesPlayed: number; bestPlacement: number }>();
+    for (const r of finalizedResults) {
+      const prev = teamMap.get(r.teamId) || {
+        totalPts: 0,
+        totalKills: 0,
+        matchesPlayed: 0,
+        bestPlacement: r.placement,
+      };
+      teamMap.set(r.teamId, {
+        totalPts: prev.totalPts + r.totalPts,
+        totalKills: prev.totalKills + r.kills,
+        matchesPlayed: prev.matchesPlayed + 1,
+        bestPlacement: Math.min(prev.bestPlacement, r.placement),
       });
-    } else {
-      await this.prisma.stageStanding.create({
-        data: {
+    }
+
+    // Upsert aggregated standings
+    for (const [teamId, stats] of teamMap.entries()) {
+      await this.prisma.stageStanding.upsert({
+        where: { stageId_teamId: { stageId, teamId } },
+        update: {
+          totalPts: stats.totalPts,
+          totalKills: stats.totalKills,
+          matchesPlayed: stats.matchesPlayed,
+          bestPlacement: stats.bestPlacement,
+        },
+        create: {
           stageId,
           teamId,
-          totalPts: result.totalPts,
-          totalKills: result.kills,
-          matchesPlayed: 1,
-          bestPlacement: result.placement,
+          totalPts: stats.totalPts,
+          totalKills: stats.totalKills,
+          matchesPlayed: stats.matchesPlayed,
+          bestPlacement: stats.bestPlacement,
         },
       });
     }
 
-    // Re-rank all teams in this stage
     await this.rerank(stageId);
   }
 
@@ -244,18 +280,28 @@ export class MatchesService {
     );
   }
 
-  // Auto-finalize provisional results after 30 minutes
+  // Auto-finalize provisional results after 30 minutes, skipping any with open disputes
   @Cron('*/5 * * * *')
   async autoFinalizeResults() {
     const cutoff = new Date(Date.now() - REVIEW_WINDOW_MINUTES * 60 * 1000);
-    // Forfeited (no-show) results need no review window — they carry zero
-    // points regardless — so they're included here rather than left stranded.
     const provisional = await this.prisma.matchResult.findMany({
-      where: { status: { in: ['provisional', 'forfeited'] }, createdAt: { lte: cutoff } },
+      where: {
+        status: { in: ['provisional', 'forfeited'] },
+        createdAt: { lte: cutoff },
+        match: {
+          disputes: {
+            none: { status: { in: ['open', 'more_evidence_requested', 'escalated'] } },
+          },
+        },
+      },
       include: { match: { include: { group: true } } },
     });
     for (const r of provisional) {
-      await this.finalizeResult(r.id);
+      try {
+        await this.finalizeResult(r.id);
+      } catch (err: any) {
+        // Skip already-finalized or locked results
+      }
     }
   }
 }

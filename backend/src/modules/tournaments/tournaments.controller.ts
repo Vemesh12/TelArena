@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Body, Param, Query, UseGuards, BadRequestException,
+  Controller, Get, Post, Patch, Body, Param, Query, UseGuards, BadRequestException, ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { TournamentsService } from './tournaments.service';
@@ -93,21 +93,24 @@ export class TournamentsController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async register(@CurrentUser() user: any, @Param('id') id: string, @Body() body: RegisterTeamDto) {
-    let teamId = body?.teamId;
-    if (!teamId) {
-      const team = await this.teamsService.getMyTeam(user.sub);
-      if (team) {
-        teamId = team.id;
-      }
-    }
-
-    if (!teamId) {
+    const team = await this.teamsService.getMyTeam(user.sub);
+    if (!team) {
       throw new BadRequestException(
-        'You must be in a confirmed team to register. Please create or join a squad on the Teams page (/teams).',
+        'You must be in a squad to register. Please create or join a squad on the Teams page (/teams).',
       );
     }
 
-    return this.tournamentsService.registerTeam(id, teamId, body?.metadata);
+    // Only the Captain can register the squad
+    if (team.captainId !== user.sub) {
+      throw new ForbiddenException('Only the squad captain can register the squad for tournaments.');
+    }
+
+    // Ensure the caller cannot arbitrarily register a different squad
+    if (body?.teamId && body.teamId !== team.id) {
+      throw new ForbiddenException('You can only register your own squad.');
+    }
+
+    return this.tournamentsService.registerTeam(id, team.id, body?.metadata);
   }
 
   @Patch(':id/registrations/:regId')
@@ -119,5 +122,13 @@ export class TournamentsController {
     @Body('status') status: string,
   ) {
     return this.tournamentsService.updateRegistrationStatus(regId, status);
+  }
+
+  @Post(':id/registrations/confirm-all')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'super_admin')
+  async confirmAllEligible(@Param('id') tournamentId: string) {
+    return this.tournamentsService.confirmAllEligibleRegistrations(tournamentId);
   }
 }

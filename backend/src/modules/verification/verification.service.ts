@@ -33,9 +33,14 @@ export class VerificationService {
   }
 
   async submitFreefireScreenshot(playerId: string, screenshotUrl: string) {
+    const isProd = process.env.NODE_ENV === 'production';
     await this.prisma.verification.update({
       where: { playerId },
-      data: { freefireScreenshot: screenshotUrl, freefireVerified: true },
+      data: {
+        freefireScreenshot: screenshotUrl,
+        freefireVerified: !isProd, // In production, requires manual staff review before points award
+        status: isProd ? 'manual_review' : 'in_progress',
+      },
     });
     return this.recomputeTes(playerId);
   }
@@ -120,7 +125,10 @@ export class VerificationService {
     if (verif) {
       await this.prisma.verification.update({
         where: { id: verif.id },
-        data: { status: 'approved' },
+        data: {
+          status: 'approved',
+          freefireVerified: verif.freefireScreenshot ? true : verif.freefireVerified,
+        },
       });
       await this.auditService.log({
         actorId,
@@ -131,6 +139,7 @@ export class VerificationService {
         before: { status: verif.status },
         after: { status: 'approved' },
       });
+      await this.recomputeTes(verif.playerId);
     }
     return { success: true };
   }
@@ -142,7 +151,7 @@ export class VerificationService {
     if (verif) {
       await this.prisma.verification.update({
         where: { id: verif.id },
-        data: { status: 'rejected' },
+        data: { status: 'rejected', freefireVerified: false },
       });
       await this.auditService.log({
         actorId,
@@ -153,6 +162,7 @@ export class VerificationService {
         before: { status: verif.status },
         after: { status: 'rejected' },
       });
+      await this.recomputeTes(verif.playerId);
     }
     return { success: true };
   }

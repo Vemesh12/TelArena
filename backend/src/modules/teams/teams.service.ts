@@ -148,10 +148,13 @@ export class TeamsService {
     const verif = await this.prisma.verification.findUnique({ where: { playerId: memberId } });
     if (!verif) throw new NotFoundException('Player has no verification record');
 
+    const circleStr = (verif.telecomCircle || '').toLowerCase();
+    const isTelugu = circleStr.includes('andhra') || circleStr.includes('telangana') || circleStr.includes('ap');
+
     const { score, decision, signals, friendlyMessage } = await this.tesService.computeScore({
       freefireVerified: verif.freefireVerified,
       otpVerified: verif.otpVerified,
-      telecomCircleMatch: verif.telecomCircle?.includes('AP') || verif.telecomCircle?.includes('Telangana') || false,
+      telecomCircleMatch: isTelugu,
       captainVouched: true,
     });
 
@@ -160,11 +163,14 @@ export class TeamsService {
       data: { tesScore: score, tesDecision: friendlyMessage, status: decision as any, signals },
     });
 
+    // Recompute and persist updated team status
+    await this.getTeam(teamId);
+
     return { score, decision, friendlyMessage };
   }
 
-  private computeTeamStatus(team: any) {
-    const coreMembers = team.members.filter((m: any) => m.isCore);
+  private async computeTeamStatus(team: any) {
+    const coreMembers = (team.members || []).filter((m: any) => m.isCore);
     const approvedCount = coreMembers.filter(
       (m: any) =>
         m.player?.verification?.status === 'auto_approved' ||
@@ -172,11 +178,20 @@ export class TeamsService {
     ).length;
 
     let status = 'forming';
-    if (approvedCount >= 3) status = 'confirmed';
+    if (approvedCount >= 3 && coreMembers.length >= 4) status = 'confirmed';
     else if (coreMembers.length >= 2) status = 'pending';
+
+    if (team.status !== status) {
+      await this.prisma.team.update({
+        where: { id: team.id },
+        data: { status: status as any },
+      });
+      team.status = status;
+    }
 
     return {
       ...team,
+      status,
       computedStatus: status,
       approvedCount,
       totalCore: coreMembers.length,

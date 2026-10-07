@@ -17,40 +17,67 @@ export class LeaderboardService {
   }
 
   async getTournamentLeaderboard(tournamentId: string, stageId?: string) {
-    const where: any = {};
-
     if (stageId) {
-      where.stageId = stageId;
-    } else {
-      // Get all stage IDs for tournament
-      const stages = await this.prisma.stage.findMany({
-        where: { tournamentId },
-        select: { id: true },
+      const standings = await this.prisma.stageStanding.findMany({
+        where: { stageId },
+        orderBy: [{ rank: 'asc' }, { totalPts: 'desc' }, { totalKills: 'desc' }],
       });
-      where.stageId = { in: stages.map((s) => s.id) };
+      const teamIds = [...new Set(standings.map((s) => s.teamId))];
+      const teams = await this.prisma.team.findMany({
+        where: { id: { in: teamIds } },
+        include: { captain: true },
+      });
+      const teamMap = Object.fromEntries(teams.map((t) => [t.id, t]));
+
+      return standings.map((s, i) => ({
+        rank: s.rank || i + 1,
+        team: teamMap[s.teamId],
+        totalPts: s.totalPts,
+        totalKills: s.totalKills,
+        matchesPlayed: s.matchesPlayed,
+        bestPlacement: s.bestPlacement,
+      }));
     }
 
+    // Get all stage IDs for tournament
+    const stages = await this.prisma.stage.findMany({
+      where: { tournamentId },
+      select: { id: true },
+    });
+    const stageIds = stages.map((s) => s.id);
+
     const standings = await this.prisma.stageStanding.findMany({
-      where,
-      orderBy: [{ totalPts: 'desc' }, { totalKills: 'desc' }],
+      where: { stageId: { in: stageIds } },
     });
 
-    // Enrich with team info
-    const teamIds = [...new Set(standings.map((s) => s.teamId))];
+    // Aggregate across all stages so each team appears exactly once
+    const byTeam = new Map<string, { totalPts: number; totalKills: number; matchesPlayed: number; bestPlacement: number | null }>();
+    for (const s of standings) {
+      const prev = byTeam.get(s.teamId) || { totalPts: 0, totalKills: 0, matchesPlayed: 0, bestPlacement: null };
+      prev.totalPts += s.totalPts;
+      prev.totalKills += s.totalKills;
+      prev.matchesPlayed += s.matchesPlayed;
+      if (s.bestPlacement != null) {
+        prev.bestPlacement = prev.bestPlacement != null ? Math.min(prev.bestPlacement, s.bestPlacement) : s.bestPlacement;
+      }
+      byTeam.set(s.teamId, prev);
+    }
+
+    const teamIds = [...byTeam.keys()];
     const teams = await this.prisma.team.findMany({
       where: { id: { in: teamIds } },
       include: { captain: true },
     });
     const teamMap = Object.fromEntries(teams.map((t) => [t.id, t]));
 
-    return standings.map((s, i) => ({
-      rank: i + 1,
-      team: teamMap[s.teamId],
-      totalPts: s.totalPts,
-      totalKills: s.totalKills,
-      matchesPlayed: s.matchesPlayed,
-      bestPlacement: s.bestPlacement,
-    }));
+    return [...byTeam.entries()]
+      .map(([teamId, stats]) => ({
+        team: teamMap[teamId],
+        ...stats,
+      }))
+      .filter((r) => r.team)
+      .sort((a, b) => b.totalPts - a.totalPts || b.totalKills - a.totalKills)
+      .map((r, i) => ({ rank: i + 1, ...r }));
   }
 
   // Module J — Overall team rating aggregated across every tournament/stage played.

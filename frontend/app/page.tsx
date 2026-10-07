@@ -18,14 +18,14 @@ import { api } from "@/lib/api";
 const NEXT_TOURNAMENT_DATE = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000);
 
 const featuredTournaments: TournamentCardData[] = [
-  { id: "demo-1", name: "TelArena Pro Series — Season 1", format: "squad", prizePool: 50000, status: "registration_open", registrations: 32, maxTeams: 48, entryFee: 0, map: "Erangel", organizer: "TelArena", difficulty: "Pro" },
-  { id: "demo-2", name: "TelArena Solo Cup", format: "solo", prizePool: 15000, status: "published", registrations: 12, maxTeams: 60, entryFee: 49, map: "Bermuda", organizer: "TelArena", difficulty: "Intermediate" },
-  { id: "demo-3", name: "TelArena Duo Clash", format: "duo", prizePool: 25000, status: "ongoing", registrations: 24, maxTeams: 24, entryFee: 0, map: "Miramar", organizer: "TelArena", difficulty: "Pro" },
-  { id: "demo-4", name: "Rookie Rumble — Open Qualifiers", format: "squad", prizePool: 8000, status: "published", registrations: 41, maxTeams: 64, entryFee: 0, map: "Sanhok", organizer: "Community", difficulty: "Beginner" },
+  { id: "demo-1", name: "TelArena Pro Series — Season 1", format: "squad", prizePool: 50000, status: "registration_open", registrations: 32, maxTeams: 48, entryFee: 0, map: "Bermuda", organizer: "TelArena", difficulty: "Pro" },
+  { id: "demo-2", name: "TelArena Solo Cup", format: "solo", prizePool: 15000, status: "published", registrations: 12, maxTeams: 60, entryFee: 49, map: "Purgatory", organizer: "TelArena", difficulty: "Intermediate" },
+  { id: "demo-3", name: "TelArena Duo Clash", format: "duo", prizePool: 25000, status: "ongoing", registrations: 24, maxTeams: 24, entryFee: 0, map: "Kalahari", organizer: "TelArena", difficulty: "Pro" },
+  { id: "demo-4", name: "Rookie Rumble — Open Qualifiers", format: "squad", prizePool: 8000, status: "published", registrations: 41, maxTeams: 64, entryFee: 0, map: "Alpine", organizer: "Community", difficulty: "Beginner" },
 ];
 
 const steps = [
-  { icon: ShieldCheck, title: "Verify", body: "Link your Free Fire / BGMI UID and confirm your identity in under 2 minutes." },
+  { icon: ShieldCheck, title: "Verify", body: "Link your Free Fire UID and confirm your identity in under 2 minutes." },
   { icon: Users, title: "Build a Squad", body: "Create or join a team, vouch teammates, and lock your roster." },
   { icon: Swords, title: "Compete", body: "Register for a bracket, receive room credentials, and play it out." },
   { icon: Wallet, title: "Get Paid", body: "Standings are audited and payouts land directly with your captain." },

@@ -156,7 +156,12 @@ export class AdminService {
     if (verif) {
       await this.prisma.verification.update({
         where: { id: verif.id },
-        data: { status: 'approved' },
+        data: {
+          status: 'approved',
+          freefireVerified: verif.freefireScreenshot ? true : verif.freefireVerified,
+          tesScore: verif.tesScore != null && verif.tesScore < 80 ? 80 : verif.tesScore,
+          tesDecision: 'Approved by tournament staff',
+        },
       });
       if (actorId) {
         await this.logAction({
@@ -180,7 +185,7 @@ export class AdminService {
     if (verif) {
       await this.prisma.verification.update({
         where: { id: verif.id },
-        data: { status: 'rejected' },
+        data: { status: 'rejected', freefireVerified: false },
       });
       if (actorId) {
         await this.logAction({

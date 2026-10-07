@@ -25,6 +25,7 @@ export default function VerifyPage() {
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
+  const [receivedOtp, setReceivedOtp] = useState<string | null>(null);
   const [appealNote, setAppealNote] = useState("");
   const [digilockerUrl, setDigilockerUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -75,9 +76,15 @@ export default function VerifyPage() {
     if (!phone) return toast.error("Error", "Please enter phone number");
     setLoading(true);
     try {
-      await api.sendOtp(phone);
+      const res: any = await api.sendOtp(phone);
       setOtpSent(true);
-      toast.success("OTP Sent", `Verification code sent to ${phone} (Stub OTP: 123456)`);
+      if (res?.otp) {
+        setReceivedOtp(res.otp);
+        setOtp(res.otp);
+        toast.success("OTP Ready", `Verification code: ${res.otp}. Code entered below.`);
+      } else {
+        toast.success("OTP Sent", `Verification code has been sent to ${phone}`);
+      }
     } catch (err: any) {
       toast.error("Failed to send OTP", err.message);
     } finally {
@@ -319,6 +326,26 @@ export default function VerifyPage() {
                     </Button>
                   ) : (
                     <div className="space-y-3">
+                      {receivedOtp && (
+                        <div className="p-3.5 rounded-xl bg-accent-cyan/10 border border-accent-cyan/30 text-xs font-mono text-text-primary flex items-center justify-between gap-3">
+                          <div>
+                            <span className="text-text-muted block text-[11px] mb-0.5">Your Verification OTP:</span>
+                            <span className="font-mono text-xl font-bold text-accent-cyan tracking-widest">{receivedOtp}</span>
+                          </div>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            type="button"
+                            onClick={() => {
+                              setOtp(receivedOtp);
+                              toast.info("Auto-Filled", `Code ${receivedOtp} entered.`);
+                            }}
+                          >
+                            Use This OTP
+                          </Button>
+                        </div>
+                      )}
+
                       <div>
                         <label className="block text-xs font-mono text-text-muted uppercase tracking-widest mb-1.5">Enter 6-Digit OTP Code</label>
                         <input

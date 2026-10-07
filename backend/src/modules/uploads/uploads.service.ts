@@ -70,7 +70,8 @@ export class UploadsService {
     fs.writeFileSync(dest, file.buffer);
     this.logger.log(`[DEV LOCAL] Saved upload locally: /uploads/${filename}`);
 
-    return `/uploads/${filename}`;
+    const backendUrl = (this.config.get('BACKEND_URL') || `http://localhost:${this.config.get('PORT') || 3001}`).replace(/\/$/, '');
+    return `${backendUrl}/uploads/${filename}`;
   }
 }
 

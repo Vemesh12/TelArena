@@ -50,6 +50,16 @@ export class AssignSlotsDto {
 export class UpdateRoomDto {
   @ApiPropertyOptional()
   @IsOptional()
+  @IsString()
+  roomCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  password?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsDateString()
   scheduledAt?: string;
 
@@ -57,4 +67,9 @@ export class UpdateRoomDto {
   @IsOptional()
   @IsString()
   map?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  releaseMinutes?: number;
 }
