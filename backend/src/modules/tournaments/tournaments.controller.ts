@@ -37,6 +37,11 @@ export class TournamentsController {
     return this.tournamentsService.getMyRegistrations(team.id);
   }
 
+  @Get('stats/overview')
+  getPublicStats() {
+    return this.tournamentsService.getPublicStats();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.tournamentsService.findById(id);

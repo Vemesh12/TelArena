@@ -237,27 +237,45 @@ async function main() {
   });
 
   // 3. Test Team
-  const hhkTeam = await prisma.team.upsert({
-    where: { tag: 'HHK' },
-    update: {},
-    create: {
-      name: 'Hyderabad Hawks',
-      tag: 'HHK',
-      status: 'confirmed',
-      inviteCode: 'HHK-SQUAD-2026',
-      captainId: captainHHK.id,
-      members: {
-        create: [
-          { playerId: captainHHK.id, isCore: true },
-          { playerId: p2.id, isCore: true },
-          { playerId: p3.id, isCore: true },
-          { playerId: p4.id, isCore: true },
-        ],
-      },
-    },
-  });
+  // 3. Teams (6 active squads)
+  const teamsData = [
+    { name: 'Hyderabad Hawks', tag: 'HHK', inviteCode: 'HHK-SQUAD-2026', capt: captainHHK },
+    { name: 'Vizag Vipers', tag: 'VVP', inviteCode: 'VVP-SQUAD-2026', capt: p2 },
+    { name: 'Warangal Warriors', tag: 'WWR', inviteCode: 'WWR-SQUAD-2026', capt: p3 },
+    { name: 'Nellore Ninjas', tag: 'NNJ', inviteCode: 'NNJ-SQUAD-2026', capt: p4 },
+    { name: 'Vijayawada Vultures', tag: 'VJV', inviteCode: 'VJV-SQUAD-2026', capt: devPlayer },
+    { name: 'Telangana Tigers', tag: 'TGR', inviteCode: 'TGR-SQUAD-2026', capt: captainHHK },
+  ];
 
-  // 4. Test Tournaments (Clean up old ones first to prevent duplicates on multiple seed runs)
+  const createdTeams: any[] = [];
+  for (const t of teamsData) {
+    const tm = await prisma.team.upsert({
+      where: { tag: t.tag },
+      update: { status: 'confirmed' },
+      create: {
+        name: t.name,
+        tag: t.tag,
+        status: 'confirmed',
+        inviteCode: t.inviteCode,
+        captainId: t.capt.id,
+        members: {
+          create: [{ playerId: t.capt.id, isCore: true }],
+        },
+      },
+    });
+    createdTeams.push(tm);
+  }
+
+  // 4. Test Tournaments
+  await prisma.payout.deleteMany();
+  await prisma.matchResult.deleteMany();
+  await prisma.match.deleteMany();
+  await prisma.roomSlot.deleteMany();
+  await prisma.room.deleteMany();
+  await prisma.groupTeam.deleteMany();
+  await prisma.group.deleteMany();
+  await prisma.stageStanding.deleteMany();
+  await prisma.stage.deleteMany();
   await prisma.scoringConfig.deleteMany();
   await prisma.tournamentRegistration.deleteMany();
   await prisma.tournament.deleteMany();
@@ -267,7 +285,7 @@ async function main() {
       name: 'TeluguArena Pro Series Season 1',
       description: 'The flagship Telugu Free Fire championship with ₹50,000 prize pool.',
       format: 'squad',
-      status: 'registration_open',
+      status: 'ongoing',
       prizePool: 50000,
       maxTeams: 48,
       eligibilityEnabled: true,
@@ -279,9 +297,7 @@ async function main() {
         },
       },
       registrations: {
-        create: [
-          { teamId: hhkTeam.id, status: 'confirmed' },
-        ],
+        create: createdTeams.map((team) => ({ teamId: team.id, status: 'confirmed' })),
       },
     },
   });
@@ -305,13 +321,182 @@ async function main() {
     },
   });
 
+  const t3 = await prisma.tournament.create({
+    data: {
+      name: 'Andhra-Telangana Duo Clash',
+      description: '2v2 duo survival series with fast progression and verified credentials.',
+      format: 'duo',
+      status: 'registration_open',
+      prizePool: 25000,
+      maxTeams: 24,
+      eligibilityEnabled: true,
+      scoringConfig: {
+        create: {
+          placementTable: { '1': 12, '2': 9, '3': 8, '4': 7, '5': 6 },
+          killPoints: 1,
+        },
+      },
+    },
+  });
+
+  const t4 = await prisma.tournament.create({
+    data: {
+      name: 'Winter Championship Grand Finals',
+      description: 'Concluded winter showdown with audited cash payouts distributed.',
+      format: 'squad',
+      status: 'completed',
+      prizePool: 75000,
+      maxTeams: 48,
+      eligibilityEnabled: true,
+      scoringConfig: {
+        create: {
+          placementTable: { '1': 12, '2': 9, '3': 8, '4': 7, '5': 6 },
+          killPoints: 1,
+        },
+      },
+    },
+  });
+
+  // 5. Stages, Groups, Rooms, Matches
+  const stg1 = await prisma.stage.create({
+    data: {
+      tournamentId: t1.id,
+      name: 'Qualifiers (Round 1)',
+      order: 1,
+      status: 'completed',
+      published: true,
+    },
+  });
+
+  const stg2 = await prisma.stage.create({
+    data: {
+      tournamentId: t1.id,
+      name: 'Semi-Finals (Group Stage)',
+      order: 2,
+      status: 'active',
+      published: true,
+    },
+  });
+
+  const grp1 = await prisma.group.create({
+    data: {
+      stageId: stg1.id,
+      name: 'Group Alpha (Bermuda)',
+      teams: {
+        create: createdTeams.map((team) => ({ teamId: team.id })),
+      },
+    },
+  });
+
+  const room1 = await prisma.room.create({
+    data: {
+      stageId: stg1.id,
+      roomCode: '9812734',
+      password: 'ffarena88',
+      map: 'Bermuda',
+      scheduledAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+      slots: {
+        create: createdTeams.map((team, idx) => ({
+          teamId: team.id,
+          slotNo: idx + 1,
+          checkedIn: true,
+        })),
+      },
+    },
+  });
+
+  const match1 = await prisma.match.create({
+    data: {
+      groupId: grp1.id,
+      roomId: room1.id,
+      playedAt: new Date(Date.now() - 90 * 60 * 1000),
+    },
+  });
+
+  const matchScores = [
+    { placement: 1, kills: 14, placementPts: 12, killPts: 14, totalPts: 26 },
+    { placement: 2, kills: 10, placementPts: 9, killPts: 10, totalPts: 19 },
+    { placement: 3, kills: 8, placementPts: 8, killPts: 8, totalPts: 16 },
+    { placement: 4, kills: 6, placementPts: 7, killPts: 6, totalPts: 13 },
+    { placement: 5, kills: 4, placementPts: 6, killPts: 4, totalPts: 10 },
+    { placement: 6, kills: 3, placementPts: 5, killPts: 3, totalPts: 8 },
+  ];
+
+  for (let i = 0; i < createdTeams.length; i++) {
+    const sc = matchScores[i] || matchScores[matchScores.length - 1];
+    await prisma.matchResult.create({
+      data: {
+        matchId: match1.id,
+        teamId: createdTeams[i].id,
+        placement: sc.placement,
+        kills: sc.kills,
+        placementPts: sc.placementPts,
+        killPts: sc.killPts,
+        totalPts: sc.totalPts,
+        status: 'finalized',
+        finalizedAt: new Date(),
+      },
+    });
+  }
+
+  // 6. Stage Standings (powers Season Rankings & Global Leaderboard)
+  const teamStandings = [56, 45, 38, 29, 22, 17];
+  for (let i = 0; i < createdTeams.length; i++) {
+    await prisma.stageStanding.create({
+      data: {
+        stageId: stg1.id,
+        teamId: createdTeams[i].id,
+        totalPts: teamStandings[i],
+        totalKills: Math.round(teamStandings[i] * 0.5),
+        matchesPlayed: 2,
+        bestPlacement: i + 1,
+        rank: i + 1,
+      },
+    });
+  }
+
+  // 7. Payouts (powers Hall of Fame & Recent Winners)
+  await prisma.payout.createMany({
+    data: [
+      {
+        tournamentId: t4.id,
+        teamId: createdTeams[0].id,
+        playerId: captainHHK.id,
+        amount: 35000,
+        placement: 1,
+        status: 'paid',
+        txRef: 'UPI-TELARENA-99881',
+        paidAt: new Date(),
+      },
+      {
+        tournamentId: t4.id,
+        teamId: createdTeams[1].id,
+        playerId: p2.id,
+        amount: 20000,
+        placement: 2,
+        status: 'paid',
+        txRef: 'UPI-TELARENA-99882',
+        paidAt: new Date(),
+      },
+      {
+        tournamentId: t4.id,
+        teamId: createdTeams[2].id,
+        playerId: p3.id,
+        amount: 10000,
+        placement: 3,
+        status: 'paid',
+        txRef: 'UPI-TELARENA-99883',
+        paidAt: new Date(),
+      },
+    ],
+  });
+
   console.log('✅ Seed Completed Successfully!');
   console.log('----------------------------------------------------');
   console.log('Test Accounts Seeded:');
-  console.log('  👑 Admin:     username: admin_test    (role: admin)');
-  console.log('  🔨 Moderator: username: mod_test      (role: moderator)');
-  console.log('  ⚔️ Captain:   username: captain_hhk   (role: player, Team: Hyderabad Hawks [HHK])');
-  console.log('  🛡️ Player:    username: player_test   (role: player, TES status: manual_review)');
+  console.log('  👑 Admin:     username: admin_test    (role: admin, pass: admin123)');
+  console.log('  🔨 Moderator: username: mod_test      (role: moderator, pass: admin123)');
+  console.log('  ⚔️ Captain:   username: captain_hhk   (role: player, Team: Hyderabad Hawks, pass: captain123)');
   console.log('----------------------------------------------------');
 }
 

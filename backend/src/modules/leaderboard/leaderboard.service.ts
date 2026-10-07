@@ -96,6 +96,22 @@ export class LeaderboardService {
       byTeam.set(s.teamId, agg);
     }
 
+    if (byTeam.size === 0) {
+      const allTeams = await this.prisma.team.findMany({
+        take: limit,
+        include: { captain: true },
+        orderBy: { createdAt: 'asc' },
+      });
+      return allTeams.map((team, i) => ({
+        rank: i + 1,
+        team,
+        totalPts: 0,
+        totalKills: 0,
+        matchesPlayed: 0,
+        bestPlacement: null,
+      }));
+    }
+
     const teamIds = [...byTeam.keys()];
     const teams = await this.prisma.team.findMany({
       where: { id: { in: teamIds } },
@@ -109,6 +125,50 @@ export class LeaderboardService {
       .sort((a, b) => b.totalPts - a.totalPts || b.totalKills - a.totalKills)
       .slice(0, limit)
       .map((r, i) => ({ rank: i + 1, ...r }));
+  }
+
+  async getRecentWinners(limit = 5) {
+    const payouts = await this.prisma.payout.findMany({
+      where: {
+        placement: { lte: 3 },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: {
+        team: true,
+        tournament: true,
+      },
+    });
+
+    if (payouts.length > 0) {
+      return payouts.map((p) => ({
+        team: p.team.name,
+        event: p.tournament.name,
+        prize: p.amount,
+        placement: p.placement === 1 ? '1st Place' : p.placement === 2 ? '2nd Place' : `${p.placement}rd Place`,
+      }));
+    }
+
+    const topStandings = await this.prisma.stageStanding.findMany({
+      where: {
+        bestPlacement: { in: [1, 2, 3] },
+      },
+      take: limit,
+      include: {
+        team: true,
+        stage: { include: { tournament: true } },
+      },
+      orderBy: { totalPts: 'desc' },
+    });
+
+    return topStandings.map((s) => ({
+      team: s.team.name,
+      event: s.stage?.tournament?.name || 'Pro Series',
+      prize: s.stage?.tournament?.prizePool
+        ? Math.round(s.stage.tournament.prizePool * (s.bestPlacement === 1 ? 0.5 : s.bestPlacement === 2 ? 0.3 : 0.2))
+        : 0,
+      placement: s.bestPlacement === 1 ? '1st Place' : s.bestPlacement === 2 ? '2nd Place' : `${s.bestPlacement}rd Place`,
+    }));
   }
 
   async getTeamOverallRating(teamId: string) {

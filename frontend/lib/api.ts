@@ -154,7 +154,13 @@ class ApiClient {
     return this.request(`/leaderboard/tournament/${tournamentId}${stageId ? `?stageId=${stageId}` : ""}`);
   }
   async getGlobalTeamRankings(limit = 50) {
-    return this.request(`/leaderboard/teams/rankings?limit=${limit}`);
+    return this.request(`/leaderboard/global/teams?limit=${limit}`);
+  }
+  async getRecentWinners(limit = 5) {
+    return this.request(`/leaderboard/recent-winners?limit=${limit}`);
+  }
+  async getPublicStats() {
+    return this.request("/tournaments/stats/overview");
   }
   async exportLeaderboardCsv(tournamentId: string, stageId?: string): Promise<Blob> {
     const token = this.getToken();

@@ -13,6 +13,16 @@ export class LeaderboardController {
     return this.leaderboardService.getGlobalTeamRankings(limit ? parseInt(limit, 10) : 50);
   }
 
+  @Get('teams/rankings')
+  getGlobalTeamRankingsAlias(@Query('limit') limit?: string) {
+    return this.leaderboardService.getGlobalTeamRankings(limit ? parseInt(limit, 10) : 50);
+  }
+
+  @Get('recent-winners')
+  getRecentWinners(@Query('limit') limit?: string) {
+    return this.leaderboardService.getRecentWinners(limit ? parseInt(limit, 10) : 5);
+  }
+
   @Get('teams/:teamId/rating')
   getTeamOverallRating(@Param('teamId') teamId: string) {
     return this.leaderboardService.getTeamOverallRating(teamId);

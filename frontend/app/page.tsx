@@ -4,7 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Trophy, Users, ShieldCheck, ArrowRight, Swords, Wallet, Star,
-  TrendingUp, TrendingDown, Minus, Crown, Sparkles,
+  TrendingUp, TrendingDown, Minus, Crown, Sparkles, Inbox,
 } from "lucide-react";
 import { CountdownTimer } from "@/components/ui/CountdownTimer";
 import { HeroVisual } from "@/components/ui/HeroVisual";
@@ -15,15 +15,6 @@ import { Footer } from "@/components/ui/Footer";
 import { TournamentCard, type TournamentCardData } from "@/components/tournaments/TournamentCard";
 import { api } from "@/lib/api";
 
-const NEXT_TOURNAMENT_DATE = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000);
-
-const featuredTournaments: TournamentCardData[] = [
-  { id: "demo-1", name: "TelArena Pro Series — Season 1", format: "squad", prizePool: 50000, status: "registration_open", registrations: 32, maxTeams: 48, entryFee: 0, map: "Bermuda", organizer: "TelArena", difficulty: "Pro" },
-  { id: "demo-2", name: "TelArena Solo Cup", format: "solo", prizePool: 15000, status: "published", registrations: 12, maxTeams: 60, entryFee: 49, map: "Purgatory", organizer: "TelArena", difficulty: "Intermediate" },
-  { id: "demo-3", name: "TelArena Duo Clash", format: "duo", prizePool: 25000, status: "ongoing", registrations: 24, maxTeams: 24, entryFee: 0, map: "Kalahari", organizer: "TelArena", difficulty: "Pro" },
-  { id: "demo-4", name: "Rookie Rumble — Open Qualifiers", format: "squad", prizePool: 8000, status: "published", registrations: 41, maxTeams: 64, entryFee: 0, map: "Alpine", organizer: "Community", difficulty: "Beginner" },
-];
-
 const steps = [
   { icon: ShieldCheck, title: "Verify", body: "Link your Free Fire UID and confirm your identity in under 2 minutes." },
   { icon: Users, title: "Build a Squad", body: "Create or join a team, vouch teammates, and lock your roster." },
@@ -31,24 +22,10 @@ const steps = [
   { icon: Wallet, title: "Get Paid", body: "Standings are audited and payouts land directly with your captain." },
 ];
 
-const leaderboardPreview = [
-  { rank: 1, team: "Hyderabad Hawks", tag: "HHK", pts: 842, trend: "up" as const },
-  { rank: 2, team: "Vizag Vipers", tag: "VVP", pts: 789, trend: "up" as const },
-  { rank: 3, team: "Warangal Warriors", tag: "WWR", pts: 756, trend: "down" as const },
-  { rank: 4, team: "Nellore Ninjas", tag: "NNJ", pts: 701, trend: "same" as const },
-  { rank: 5, team: "Vijayawada Vultures", tag: "VJV", pts: 664, trend: "up" as const },
-];
-
-const recentWinners = [
-  { team: "Hyderabad Hawks", event: "Pro Series Season 1", prize: 25000, placement: "1st Place" },
-  { team: "Vizag Vipers", event: "Pro Series Season 1", prize: 15000, placement: "2nd Place" },
-  { team: "Warangal Warriors", event: "Solo Cup Finale", prize: 8000, placement: "1st Place" },
-];
-
 const testimonials = [
-  { quote: "First platform where room codes and payouts actually arrived on time, every single match.", author: "Squad Captain, Hyderabad Hawks" },
-  { quote: "Verification took two minutes and I was registered for my first bracket the same day.", author: "Solo Player, Vizag" },
-  { quote: "Disputes get reviewed with actual evidence, not just admin vibes. Feels legitimate.", author: "Team Manager, Warangal Warriors" },
+  { quote: "First platform where room codes and payouts actually arrived on time, every single match.", author: "Competitive Squad Leader" },
+  { quote: "Verification took two minutes and I was registered for my first bracket the same day.", author: "Solo Tournament Player" },
+  { quote: "Disputes get reviewed with actual evidence, not just admin vibes. Transparent and legitimate.", author: "Esports Team Manager" },
 ];
 
 const faqs = [
@@ -65,34 +42,61 @@ const fadeUp = {
   show: { opacity: 1, y: 0 },
 };
 
-function trendIcon(trend: "up" | "down" | "same") {
-  if (trend === "up") return <TrendingUp className="w-3.5 h-3.5 text-status-success" />;
-  if (trend === "down") return <TrendingDown className="w-3.5 h-3.5 text-status-error" />;
-  return <Minus className="w-3.5 h-3.5 text-text-muted" />;
-}
-
 export default function HomePage() {
-  const [liveTournaments, setLiveTournaments] = useState<TournamentCardData[]>(featuredTournaments);
+  const [liveTournaments, setLiveTournaments] = useState<TournamentCardData[]>([]);
+  const [liveLeaderboard, setLiveLeaderboard] = useState<any[]>([]);
+  const [recentWinners, setRecentWinners] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    totalPlayers: 0,
+    totalTeams: 0,
+    totalTournaments: 0,
+    totalPrizePool: 0,
+  });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getTournaments()
-      .then((res: any) => {
-        if (Array.isArray(res) && res.length > 0) {
-          setLiveTournaments(
-            res.slice(0, 4).map((t: any) => ({
-              id: t.id,
-              name: t.name,
-              format: t.format,
-              prizePool: t.prizePool,
-              status: t.status,
-              registrations: t._count?.registrations ?? 0,
-              maxTeams: t.maxTeams,
-            })),
-          );
-        }
-      })
-      .catch(() => {});
+    Promise.all([
+      api.getTournaments()
+        .then((res: any) => {
+          if (Array.isArray(res)) {
+            setLiveTournaments(
+              res.slice(0, 4).map((t: any) => ({
+                id: t.id,
+                name: t.name,
+                format: t.format,
+                prizePool: t.prizePool,
+                status: t.status,
+                registrations: t._count?.registrations ?? 0,
+                maxTeams: t.maxTeams,
+              })),
+            );
+          }
+        })
+        .catch(() => setLiveTournaments([])),
+
+      api.getGlobalTeamRankings(5)
+        .then((res: any) => {
+          if (Array.isArray(res)) setLiveLeaderboard(res);
+        })
+        .catch(() => setLiveLeaderboard([])),
+
+      api.getRecentWinners(3)
+        .then((res: any) => {
+          if (Array.isArray(res)) setRecentWinners(res);
+        })
+        .catch(() => setRecentWinners([])),
+
+      api.getPublicStats()
+        .then((res: any) => {
+          if (res) setStats(res);
+        })
+        .catch(() => {}),
+    ]).finally(() => setLoading(false));
   }, []);
+
+  const topTeam = liveLeaderboard[0]?.team;
+  const topTourney = liveTournaments[0];
+  const countdownTarget = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
 
   return (
     <div className="min-h-screen">
@@ -114,7 +118,7 @@ export default function HomePage() {
           >
             <motion.div variants={fadeUp} transition={{ duration: 0.5 }} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-line mb-7">
               <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" />
-              <span className="font-mono text-xs text-text-secondary tracking-wide">Season 1 · Live Now</span>
+              <span className="font-mono text-xs text-text-secondary tracking-wide">Season 1 · Live Competition</span>
             </motion.div>
 
             <motion.h1
@@ -148,6 +152,7 @@ export default function HomePage() {
           <div className="lg:col-span-6 relative h-[440px] hidden lg:block">
             <HeroVisual className="absolute -inset-x-16 -inset-y-10 pointer-events-none" />
 
+            {/* Featured Arena Float */}
             <motion.div
               initial={{ opacity: 0, y: 30, rotate: -4 }}
               animate={{ opacity: 1, y: 0, rotate: -4 }}
@@ -156,16 +161,27 @@ export default function HomePage() {
               className="absolute top-6 right-8 w-72 card-angular p-4 shadow-card-hover"
             >
               <div className="flex items-center justify-between mb-3">
-                <Badge variant="live" pulse>Live</Badge>
-                <span className="font-mono text-xs text-text-muted">Grp B · Match 3</span>
+                <Badge variant={topTourney ? "live" : "default"} pulse={Boolean(topTourney)}>
+                  {topTourney?.status === "ongoing" ? "Live Arena" : topTourney ? "Active" : "Arena"}
+                </Badge>
+                <span className="font-mono text-xs text-text-muted">
+                  {topTourney ? `${topTourney.format.toUpperCase()} Match` : "Pro Tier"}
+                </span>
               </div>
-              <p className="font-display font-semibold text-sm text-text-primary mb-1">TelArena Duo Clash</p>
+              <p className="font-display font-semibold text-sm text-text-primary mb-1 truncate">
+                {topTourney?.name || "Official TelArena Open"}
+              </p>
               <div className="flex items-center justify-between text-xs text-text-secondary font-mono">
-                <span>24/24 teams</span>
-                <span className="text-accent-cyan">₹25,000 pool</span>
+                <span>
+                  {topTourney ? `${topTourney.registrations}/${topTourney.maxTeams} teams` : "Open Lobby"}
+                </span>
+                <span className="text-accent-cyan">
+                  {topTourney?.prizePool ? `₹${topTourney.prizePool.toLocaleString("en-IN")} pool` : "Real Payouts"}
+                </span>
               </div>
             </motion.div>
 
+            {/* Top Squad Leader Float */}
             <motion.div
               initial={{ opacity: 0, y: 30, rotate: 3 }}
               animate={{ opacity: 1, y: 0, rotate: 3 }}
@@ -175,12 +191,19 @@ export default function HomePage() {
             >
               <div className="flex items-center gap-2 mb-3">
                 <Crown className="w-4 h-4 text-rank-gold" />
-                <span className="font-display text-xs font-semibold text-text-primary">Top Squad This Week</span>
+                <span className="font-display text-xs font-semibold text-text-primary">
+                  {topTeam ? "Top Squad This Season" : "Current Rank #1"}
+                </span>
               </div>
-              <p className="font-display font-semibold text-lg text-text-primary">Hyderabad Hawks</p>
-              <p className="font-mono text-xs text-accent-cyan mt-1">842 pts · 5 wins</p>
+              <p className="font-display font-semibold text-lg text-text-primary truncate">
+                {topTeam?.name || "Awaiting Leader"}
+              </p>
+              <p className="font-mono text-xs text-accent-cyan mt-1">
+                {liveLeaderboard[0] ? `${liveLeaderboard[0].totalPts ?? 0} pts · ${liveLeaderboard[0].matchesPlayed ?? 0} matches` : "Rankings active"}
+              </p>
             </motion.div>
 
+            {/* Next Tournament Countdown */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -188,9 +211,10 @@ export default function HomePage() {
               className="absolute bottom-0 right-4 w-80 card-angular p-5"
             >
               <p className="font-mono text-xs text-text-muted uppercase tracking-widest mb-4">Next Tournament Starts In</p>
-              <CountdownTimer targetDate={NEXT_TOURNAMENT_DATE} />
+              <CountdownTimer targetDate={countdownTarget} />
             </motion.div>
 
+            {/* Live Pool Pill */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -198,7 +222,11 @@ export default function HomePage() {
               className="absolute top-2 left-24 flex items-center gap-2 px-3 py-2 rounded-full bg-bg-elevated border border-line"
             >
               <Sparkles className="w-3.5 h-3.5 text-accent-red" />
-              <span className="font-mono text-xs text-text-secondary">₹50,000 pool live</span>
+              <span className="font-mono text-xs text-text-secondary">
+                {stats.totalPrizePool > 0
+                  ? `₹${stats.totalPrizePool.toLocaleString("en-IN")} total prize pool`
+                  : "Verified Esports Platform"}
+              </span>
             </motion.div>
           </div>
         </div>
@@ -260,20 +288,36 @@ export default function HomePage() {
             View all <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {liveTournaments.map((t, i) => (
-            <TournamentCard key={t.id} tournament={t} index={i} />
-          ))}
-        </div>
+
+        {liveTournaments.length === 0 ? (
+          <div className="card-angular p-12 text-center border border-line">
+            <Trophy className="w-12 h-12 text-accent-red/40 mx-auto mb-4" />
+            <h3 className="font-display font-semibold text-lg text-text-primary mb-2">No Active Tournaments Scheduled</h3>
+            <p className="text-sm text-text-secondary max-w-md mx-auto mb-6">
+              New official and community brackets are scheduled on a rolling basis. Get your squad formed and verified to be ready when registration opens.
+            </p>
+            <Link href="/tournaments">
+              <Button variant="primary" size="sm">
+                Browse Full Schedule <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {liveTournaments.map((t, i) => (
+              <TournamentCard key={t.id} tournament={t} index={i} />
+            ))}
+          </div>
+        )}
       </section>
 
-      {/* ─── Prize Pools ─── */}
+      {/* ─── Prize Pools & Platform Stats ─── */}
       <section className="max-w-container mx-auto px-6 lg:px-10 py-20">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCallout value={500000} label="Total Prize Pool Distributed (₹)" prefix="₹" color="red" />
-          <StatCallout value={2000} label="Verified Players" suffix="+" color="cyan" />
-          <StatCallout value={48} label="Teams This Season" color="red" />
-          <StatCallout value={12} label="Tournaments Run" color="cyan" />
+          <StatCallout value={stats.totalPrizePool} label="Total Prize Pool (₹)" prefix="₹" color="red" />
+          <StatCallout value={stats.totalPlayers} label="Registered Players" color="cyan" />
+          <StatCallout value={stats.totalTeams} label="Teams Active" color="red" />
+          <StatCallout value={stats.totalTournaments} label="Tournaments Hosted" color="cyan" />
         </div>
       </section>
 
@@ -298,23 +342,39 @@ export default function HomePage() {
                     <th className="text-left font-mono text-xs text-text-muted uppercase tracking-wider py-3 px-5">Rank</th>
                     <th className="text-left font-mono text-xs text-text-muted uppercase tracking-wider py-3 px-5">Squad</th>
                     <th className="text-right font-mono text-xs text-text-muted uppercase tracking-wider py-3 px-5">Points</th>
-                    <th className="text-right font-mono text-xs text-text-muted uppercase tracking-wider py-3 px-5">Trend</th>
+                    <th className="text-right font-mono text-xs text-text-muted uppercase tracking-wider py-3 px-5">Matches</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {leaderboardPreview.map((row) => (
-                    <tr key={row.rank} className="border-b border-line/60 last:border-0 hover:bg-white/[0.02] transition-colors">
-                      <td className="py-3.5 px-5">
-                        <span className={cnRank(row.rank)}>#{row.rank}</span>
+                  {liveLeaderboard.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-10 text-center text-sm text-text-muted">
+                        No team match scores recorded yet. Points accumulate as tournament matches conclude!
                       </td>
-                      <td className="py-3.5 px-5">
-                        <span className="font-body font-medium text-text-primary text-sm">{row.team}</span>
-                        <span className="font-mono text-xs text-text-muted ml-2">{row.tag}</span>
-                      </td>
-                      <td className="py-3.5 px-5 text-right font-mono text-sm text-accent-cyan tabular-nums">{row.pts}</td>
-                      <td className="py-3.5 px-5 flex justify-end">{trendIcon(row.trend)}</td>
                     </tr>
-                  ))}
+                  ) : (
+                    liveLeaderboard.map((row: any) => (
+                      <tr key={row.rank} className="border-b border-line/60 last:border-0 hover:bg-white/[0.02] transition-colors">
+                        <td className="py-3.5 px-5">
+                          <span className={cnRank(row.rank)}>#{row.rank}</span>
+                        </td>
+                        <td className="py-3.5 px-5">
+                          <span className="font-body font-medium text-text-primary text-sm">
+                            {row.team?.name || "Squad"}
+                          </span>
+                          <span className="font-mono text-xs text-text-muted ml-2">
+                            {row.team?.tag ? `[${row.team.tag}]` : ""}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-5 text-right font-mono text-sm text-accent-cyan tabular-nums">
+                          {row.totalPts ?? 0}
+                        </td>
+                        <td className="py-3.5 px-5 text-right font-mono text-xs text-text-secondary tabular-nums">
+                          {row.matchesPlayed ?? 0}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -322,30 +382,42 @@ export default function HomePage() {
 
           {/* Top teams / recent winners */}
           <div className="lg:col-span-2">
-            <p className="font-mono text-xs text-accent-red uppercase tracking-widest mb-3">Recent Winners</p>
+            <p className="font-mono text-xs text-accent-red uppercase tracking-widest mb-3">Tournament Champions</p>
             <h2 className="font-display font-semibold text-2xl sm:text-3xl text-text-primary tracking-tight mb-8">Hall of Fame</h2>
             <div className="space-y-3">
-              {recentWinners.map((w, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: 16 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: i * 0.08 }}
-                  className="card-angular p-4 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-rank-gold/10 flex items-center justify-center shrink-0">
-                      <Trophy className="w-4 h-4 text-rank-gold" />
+              {recentWinners.length === 0 ? (
+                <div className="card-angular p-6 text-center border border-line">
+                  <Trophy className="w-8 h-8 text-rank-gold/50 mx-auto mb-2" />
+                  <p className="font-body font-medium text-sm text-text-primary mb-1">Champions Awaiting Coronation</p>
+                  <p className="text-xs text-text-muted leading-relaxed">
+                    Tournament winners and prize recipients will be permanently commemorated here as Grand Finals finalize.
+                  </p>
+                </div>
+              ) : (
+                recentWinners.map((w: any, i: number) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: 16 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: i * 0.08 }}
+                    className="card-angular p-4 flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-rank-gold/10 flex items-center justify-center shrink-0">
+                        <Trophy className="w-4 h-4 text-rank-gold" />
+                      </div>
+                      <div>
+                        <p className="font-body font-medium text-sm text-text-primary">{w.team}</p>
+                        <p className="text-xs text-text-muted">{w.event} · {w.placement}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-body font-medium text-sm text-text-primary">{w.team}</p>
-                      <p className="text-xs text-text-muted">{w.event} · {w.placement}</p>
-                    </div>
-                  </div>
-                  <span className="font-mono text-sm text-accent-cyan tabular-nums shrink-0">₹{w.prize.toLocaleString("en-IN")}</span>
-                </motion.div>
-              ))}
+                    <span className="font-mono text-sm text-accent-cyan tabular-nums shrink-0">
+                      ₹{Number(w.prize || 0).toLocaleString("en-IN")}
+                    </span>
+                  </motion.div>
+                ))
+              )}
             </div>
           </div>
         </div>

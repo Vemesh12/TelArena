@@ -15,6 +15,23 @@ export class TournamentsService {
     private readonly auditService: AuditService,
   ) {}
 
+  async getPublicStats() {
+    const [totalPlayers, totalTeams, totalTournaments, prizeAgg] = await Promise.all([
+      this.prisma.player.count(),
+      this.prisma.team.count(),
+      this.prisma.tournament.count(),
+      this.prisma.tournament.aggregate({
+        _sum: { prizePool: true },
+      }),
+    ]);
+    return {
+      totalPlayers,
+      totalTeams,
+      totalTournaments,
+      totalPrizePool: prizeAgg._sum.prizePool || 0,
+    };
+  }
+
   async create(data: {
     name: string;
     bannerUrl?: string;
