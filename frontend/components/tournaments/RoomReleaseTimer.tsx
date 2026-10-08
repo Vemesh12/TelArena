@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { KeyRound, Copy, Check, Info, Lock, Clock } from "lucide-react";
+import { KeyRound, Copy, Check, Info, Lock, Clock, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { useSocket } from "@/hooks/useSocket";
@@ -29,6 +29,7 @@ export function RoomReleaseTimer({
   const { subscribeToRoom } = useSocket();
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedPass, setCopiedPass] = useState(false);
+  const [showPass, setShowPass] = useState(false);
 
   const [liveCode, setLiveCode] = useState(roomCode);
   const [livePass, setLivePass] = useState(password);
@@ -157,12 +158,23 @@ export function RoomReleaseTimer({
               <div>
                 <span className="text-[11px] font-mono text-text-muted block mb-1">Room Password</span>
                 <span className="font-mono text-xl text-accent-red font-semibold tracking-widest">
-                  {livePass}
+                  {showPass ? livePass : "••••••••"}
                 </span>
               </div>
-              <Button variant="secondary" size="sm" onClick={() => copyToClipboard(livePass, "pass")}>
-                {copiedPass ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              </Button>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowPass(!showPass)}
+                  aria-label={showPass ? "Hide password" : "Show password"}
+                  className="px-2"
+                >
+                  {showPass ? <EyeOff className="w-4 h-4 text-text-muted" /> : <Eye className="w-4 h-4 text-text-muted" />}
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => copyToClipboard(livePass, "pass")}>
+                  {copiedPass ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                </Button>
+              </div>
             </div>
           </div>
 

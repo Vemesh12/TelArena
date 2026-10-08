@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Menu, X, ChevronDown, User, LayoutDashboard, ShieldCheck, LogOut, Gamepad2,
+  Eye, EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -39,12 +40,14 @@ export function NavBar() {
   // Mobile Login Form State
   const [loginPhone, setLoginPhone] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState("");
 
   // Mobile Sign Up Form State
   const [regPhone, setRegPhone] = useState("");
   const [regPassword, setRegPassword] = useState("");
+  const [showRegPassword, setShowRegPassword] = useState(false);
   const [regUsername, setRegUsername] = useState("");
   const [regFullName, setRegFullName] = useState("");
   const [regFreefireUid, setRegFreefireUid] = useState("");
@@ -377,14 +380,24 @@ export function NavBar() {
 
               <div>
                 <label className="block text-xs font-body text-text-muted mb-1.5">Password</label>
-                <input
-                  type="password"
-                  required
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-bg-primary border border-line rounded-lg px-4 py-2.5 text-sm text-text-primary font-mono outline-none focus:border-accent-red transition-colors"
-                />
+                <div className="relative">
+                  <input
+                    type={showLoginPassword ? "text" : "password"}
+                    required
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-bg-primary border border-line rounded-lg pl-4 pr-11 py-2.5 text-sm text-text-primary font-mono outline-none focus:border-accent-red transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors p-1"
+                    aria-label={showLoginPassword ? "Hide password" : "Show password"}
+                  >
+                    {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <Button variant="primary" type="submit" loading={loginLoading} className="w-full py-3">
@@ -447,14 +460,24 @@ export function NavBar() {
 
               <div>
                 <label className="block text-xs font-body text-text-muted mb-1.5">Create password</label>
-                <input
-                  type="password"
-                  required
-                  value={regPassword}
-                  onChange={(e) => setRegPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-bg-primary border border-line rounded-lg px-4 py-2.5 text-sm text-text-primary font-mono outline-none focus:border-accent-cyan transition-colors"
-                />
+                <div className="relative">
+                  <input
+                    type={showRegPassword ? "text" : "password"}
+                    required
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-bg-primary border border-line rounded-lg pl-4 pr-11 py-2.5 text-sm text-text-primary font-mono outline-none focus:border-accent-cyan transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRegPassword(!showRegPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors p-1"
+                    aria-label={showRegPassword ? "Hide password" : "Show password"}
+                  >
+                    {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div>

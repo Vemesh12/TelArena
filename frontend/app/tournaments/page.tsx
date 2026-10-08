@@ -14,7 +14,7 @@ export default function TournamentsPage() {
 
   useEffect(() => {
     api.getTournaments()
-      .then((res: any) => setTournaments(res))
+      .then((res: any) => setTournaments(Array.isArray(res) ? res : []))
       .catch(() => setTournaments([]))
       .finally(() => setLoading(false));
   }, []);

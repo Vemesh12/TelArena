@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Swords, Lock, Bell, Wallet, Trophy, CheckCircle2, Gavel, AlertTriangle } from "lucide-react";
+import { Swords, Lock, Bell, Wallet, Trophy, CheckCircle2, Gavel, AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { CountdownTimer } from "@/components/ui/CountdownTimer";
@@ -22,6 +22,7 @@ export default function PlayerDashboardPage() {
   const [payouts, setPayouts] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showDashboardPass, setShowDashboardPass] = useState(false);
 
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [checkInLoading, setCheckInLoading] = useState(false);
@@ -219,11 +220,21 @@ export default function PlayerDashboardPage() {
                       </p>
                     </div>
                     <div className="p-4 rounded-xl bg-bg-elevated border border-line">
-                      <span className="text-[11px] font-mono text-text-muted uppercase tracking-widest block mb-1">
-                        Password
-                      </span>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] font-mono text-text-muted uppercase tracking-widest">
+                          Password
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowDashboardPass(!showDashboardPass)}
+                          className="text-text-muted hover:text-text-primary transition-colors p-0.5"
+                          aria-label={showDashboardPass ? "Hide password" : "Show password"}
+                        >
+                          {showDashboardPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
                       <p className="font-mono text-xl font-semibold text-accent-cyan select-all tracking-widest">
-                        {nextMatch.credentials.password}
+                        {showDashboardPass ? nextMatch.credentials.password : "••••••••"}
                       </p>
                     </div>
                     <div className="p-4 rounded-xl bg-bg-elevated border border-line">

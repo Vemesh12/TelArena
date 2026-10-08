@@ -195,6 +195,7 @@ class ApiClient {
 
   // Rooms
   async getNextMatch() { return this.request("/rooms/next-match"); }
+  async getMyNextMatch() { return this.getNextMatch(); }
   async checkInSquad() { return this.request("/rooms/check-in", { method: "POST" }); }
   async updateRoom(roomId: string, data: { scheduledAt?: string; map?: string; roomCode?: string; password?: string; releaseMinutes?: number }) {
     return this.request(`/rooms/${roomId}`, { method: "PATCH", body: JSON.stringify(data) });

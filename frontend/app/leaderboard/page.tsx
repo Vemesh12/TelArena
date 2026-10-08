@@ -56,15 +56,28 @@ export default function GlobalLeaderboardPage() {
     };
   }, [tournamentId, subscribeToTournament]);
 
-  const handleExport = async () => {
-    if (!tournamentId) return toast.error("No Active Tournament", "There is no active tournament selected to export standings for.");
+  const handleExport = () => {
+    if (!standings || standings.length === 0) {
+      return toast.error("No Data to Export", "There are no leaderboard standings available to download.");
+    }
     setExporting(true);
     try {
-      const blob = await api.exportLeaderboardCsv(tournamentId);
+      const headers = ["Rank", "Squad Name", "Tag", "Total Points", "Total Kills", "Matches Played", "Best Placement"];
+      const rows = standings.map((s: any, idx: number) => [
+        s.rank || idx + 1,
+        `"${(s.team?.name || s.name || 'Squad').replace(/"/g, '""')}"`,
+        `"${(s.team?.tag || s.tag || '').replace(/"/g, '""')}"`,
+        s.totalPts ?? s.pts ?? 0,
+        s.totalKills ?? s.kills ?? 0,
+        s.matchesPlayed ?? 0,
+        s.bestPlacement ? `#${s.bestPlacement}` : 'N/A',
+      ]);
+      const csvContent = [headers.join(","), ...rows.map((r: any) => r.join(","))].join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `teluguarena_leaderboard_${tournamentId}.csv`);
+      link.setAttribute("download", `telarena_leaderboard_${new Date().toISOString().slice(0, 10)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

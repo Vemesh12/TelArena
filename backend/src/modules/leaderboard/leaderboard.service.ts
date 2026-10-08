@@ -209,4 +209,31 @@ export class LeaderboardService {
 
     return csvStringifier.getHeaderString() + csvStringifier.stringifyRecords(rows);
   }
+
+  async exportGlobalCsv(): Promise<string> {
+    const data = await this.getGlobalTeamRankings(100);
+    const rows = data.map((d) => ({
+      rank: d.rank,
+      teamName: d.team?.name || '',
+      teamTag: d.team?.tag || '',
+      totalPts: d.totalPts,
+      totalKills: d.totalKills,
+      matchesPlayed: d.matchesPlayed,
+      bestPlacement: d.bestPlacement || '',
+    }));
+
+    const csvStringifier = createObjectCsvStringifier({
+      header: [
+        { id: 'rank', title: 'Rank' },
+        { id: 'teamName', title: 'Squad Name' },
+        { id: 'teamTag', title: 'Tag' },
+        { id: 'totalPts', title: 'Total Points' },
+        { id: 'totalKills', title: 'Total Kills' },
+        { id: 'matchesPlayed', title: 'Matches Played' },
+        { id: 'bestPlacement', title: 'Best Placement' },
+      ],
+    });
+
+    return csvStringifier.getHeaderString() + csvStringifier.stringifyRecords(rows);
+  }
 }

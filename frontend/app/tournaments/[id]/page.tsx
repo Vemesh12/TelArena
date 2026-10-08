@@ -85,7 +85,7 @@ export default function TournamentDetailPage() {
 
   useEffect(() => {
     if (user) {
-      api.getMyNextMatch()
+      api.getNextMatch()
         .then((res: any) => {
           if (res) setUserMatch(res);
         })
@@ -253,9 +253,9 @@ export default function TournamentDetailPage() {
               ? tournament.stages.map((stg: any, idx: number) => ({
                   id: stg.id,
                   name: stg.name,
-                  status: (stg.status === "in_progress" ? "active" : stg.status === "completed" ? "completed" : "upcoming") as "active" | "completed" | "upcoming",
-                  teamsCount: stg.groups?.reduce((acc: number, g: any) => acc + (g.matches?.[0]?.results?.length || 12), 0) || (stg.stageNumber === 1 ? (tournament.maxTeams || 48) : 12),
-                  dateStr: tournament.startDate ? new Date(tournament.startDate).toLocaleDateString("en-IN", { month: "short", day: "numeric" }) : "TBA",
+                  status: (stg.status === "in_progress" || stg.status === "active" ? "active" : stg.status === "completed" ? "completed" : "upcoming") as "active" | "completed" | "upcoming",
+                  teamsCount: stg.groups?.reduce((acc: number, g: any) => acc + (g?.matches?.[0]?.results?.length || 12), 0) || (stg.order === 1 ? (tournament.maxTeams || 48) : 12),
+                  dateStr: (tournament.startDate || tournament.createdAt) ? new Date(tournament.startDate || tournament.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric" }) : "TBA",
                   advancement: stg.advancementCount
                     ? `Top ${stg.advancementCount} squads advance to next stage`
                     : idx === tournament.stages.length - 1
@@ -417,7 +417,7 @@ export default function TournamentDetailPage() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-line/40">
-                          {match.results.sort((a: any, b: any) => a.placement - b.placement).map((res: any) => (
+                          {[...match.results].sort((a: any, b: any) => a.placement - b.placement).map((res: any) => (
                             <tr key={res.id} className="hover:bg-white/5 transition-colors">
                               <td className="py-2.5 font-mono font-bold text-text-primary">Rank #{res.placement}</td>
                               <td className="font-semibold text-text-secondary">{res.team?.name}</td>

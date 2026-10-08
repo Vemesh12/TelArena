@@ -47,4 +47,12 @@ export class LeaderboardController {
     res.setHeader('Content-Disposition', `attachment; filename="leaderboard-${tournamentId}.csv"`);
     res.send(csv);
   }
+
+  @Get('export')
+  async exportGlobalCsv(@Res() res: Response) {
+    const csv = await this.leaderboardService.exportGlobalCsv();
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="leaderboard-global.csv"');
+    res.send(csv);
+  }
 }
